@@ -1,0 +1,6 @@
+node_modules
+dist
+# original 143 MB Sketchfab download + intermediates (over GitHub's 100 MB limit)
+assets_src/
+# bundled headless test builds
+tools/.*.mjs

@@ -1,0 +1,882 @@
+{
+  "_meta": {
+    "value": "Toyota Fortuner 2.8 diesel AT 4x4 (India, 2021 facelift onward; Legender noted where it differs)",
+    "unit": "",
+    "class": "meta",
+    "confidence": "high",
+    "variant": "all",
+    "source": "D:\\FortunerSim\\research\\SOURCES.md",
+    "notes": "Compiled 2026-11-18. Classes: official = Toyota (India where available; other Toyota distributors labelled by market), independent = road tests and catalogues, estimate = derived (formula in notes), assumption = typical body-on-frame SUV value, NOT Fortuner data. Where sources conflict, both are kept as separate keys with a suffix. Toyota India lists rpm in s^-1; multiply by 60 for rpm. Legender 4x4 AT has the same mechanical specs as Fortuner 4x4 AT in the Toyota India spec sheets (same engine rating, tyres, suspension, GVW); it differs in styling and equipment only."
+  },
+
+  "engine_code": {
+    "value": "1GD-FTV",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "2.8 diesel, all markets",
+    "source": "https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf",
+    "notes": "Toyota UK Hilux tech spec; Toyota Pakistan (Indus) Fortuner spec sheet also says '1GD-FTV Hi with Balance Shaft' (https://toyota-indus.com/wp-content/uploads/2023/06/Spec-Sheet-Toyota-Fortuner-GR-S.pdf). Toyota India brochure does not print the engine code."
+  },
+  "displacement_cc": {
+    "value": 2755,
+    "unit": "cc",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India Fortuner/Legender diesel",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Toyota global 2015 GD launch release says 2,754 cc (https://global.toyota/detail/8348091). Rounding difference only."
+  },
+  "cylinders": {
+    "value": 4,
+    "unit": "count",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India diesel",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "4-cylinder in-line, DOHC 16-valve. Toyota Pakistan sheet adds 'with Balance Shaft'."
+  },
+  "bore_mm": {
+    "value": 92.0,
+    "unit": "mm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "1GD-FTV (all)",
+    "source": "https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf",
+    "notes": "Same 92 x 103.6 in Toyota global release https://global.toyota/detail/8348091 and drom.ru Fortuner 2.8 AT entry."
+  },
+  "stroke_mm": {
+    "value": 103.6,
+    "unit": "mm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "1GD-FTV (all)",
+    "source": "https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf",
+    "notes": ""
+  },
+  "compression_ratio": {
+    "value": 15.6,
+    "unit": ":1",
+    "class": "official",
+    "confidence": "high",
+    "variant": "1GD-FTV (all)",
+    "source": "https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf",
+    "notes": "Also https://global.toyota/detail/8348091"
+  },
+  "firing_order": {
+    "value": "1-3-4-2",
+    "unit": "",
+    "class": "assumption",
+    "confidence": "low",
+    "variant": "1GD-FTV",
+    "source": "https://en.wikipedia.org/wiki/Firing_order",
+    "notes": "NOT verified for the 1GD-FTV. 1-3-4-2 is the standard inline-4 order; no 1GD-specific source found. For audio: an inline-4 four-stroke fires twice per crank revolution, so firing frequency (Hz) = rpm / 30."
+  },
+  "turbo_type": {
+    "value": "Variable nozzle turbocharger (VNT) with intercooler",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India diesel",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Toyota global release: 'compact high-efficiency variable geometry turbocharger (produced in-house by Toyota)' https://global.toyota/detail/8348091"
+  },
+  "fuel_system": {
+    "value": "Common-rail direct injection",
+    "unit": "",
+    "class": "independent",
+    "confidence": "high",
+    "variant": "India GR-S/Legender 4x4 AT",
+    "source": "https://www.autocarindia.com/cars/toyota/fortuner/2.8-diesel-4x4-at-legender/specifications",
+    "notes": ""
+  },
+  "peak_power_kw_AT": {
+    "value": 150,
+    "unit": "kW (204 PS)",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India Fortuner/Legender diesel AT",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "AT: @ 50-57 s^-1 = 3000-3420 rpm. Toyota UK and Toyota Pakistan: 3,000-3,400 rpm."
+  },
+  "peak_power_rpm_range_AT": {
+    "value": [3000, 3400],
+    "unit": "rpm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India diesel AT",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Printed as 50-57 s^-1."
+  },
+  "peak_power_kw_MT": {
+    "value": 150,
+    "unit": "kW (204 PS)",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India diesel MT",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "MT: @ 57 s^-1 = 3420 rpm."
+  },
+  "peak_torque_nm_AT": {
+    "value": 500,
+    "unit": "Nm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India Fortuner/Legender diesel AT",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "@ 27-47 s^-1 = 1620-2820 rpm. Toyota UK/Pakistan: 1,600-2,800 rpm."
+  },
+  "peak_torque_rpm_range_AT": {
+    "value": [1600, 2800],
+    "unit": "rpm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India diesel AT",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Printed as 27-47 s^-1 (1620-2820 rpm); rounded to 1600-2800 per Toyota UK sheet."
+  },
+  "peak_torque_nm_MT": {
+    "value": 420,
+    "unit": "Nm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India diesel MT",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "@ 23-57 s^-1 = 1380-3420 rpm. Toyota UK: 420 @ 1,400-3,400 (6MT). CarWale lists 420 Nm @ 1400 rpm."
+  },
+  "peak_torque_rpm_range_MT": {
+    "value": [1400, 3400],
+    "unit": "rpm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "Hilux/Fortuner 2.8 6MT",
+    "source": "https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf",
+    "notes": "Toyota India prints 23-57 s^-1."
+  },
+  "pre_facelift_rating_for_reference": {
+    "value": "130 kW (177 PS) @ 3400 rpm; 450 Nm @ 1600-2400 rpm (AT); 370 Nm @ 1200 rpm",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "1GD-FTV 2015 launch rating (India Fortuner 2016-2020)",
+    "source": "https://global.toyota/detail/8348091",
+    "notes": "Use only to interpret older Indian road tests (2016-2020), which were run on this rating."
+  },
+  "gr_s_rating_note": {
+    "value": "India GR-S: 204 PS / 500 Nm (same as standard AT)",
+    "unit": "",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "India GR-S 4x4 AT",
+    "source": "https://www.autocarindia.com/cars/toyota/fortuner/2.8-diesel-4x4-at-legender/specifications",
+    "notes": "Wikipedia lists a 165 kW / 550 Nm GR Sport tune for other markets (https://en.wikipedia.org/wiki/Toyota_GD_engine); Autocar India gives 204 hp for the India GR-S."
+  },
+  "idle_rpm": {
+    "value": 750,
+    "unit": "rpm",
+    "class": "assumption",
+    "confidence": "low",
+    "variant": "generic modern 4-cyl common-rail diesel",
+    "source": "none: no Fortuner/1GD idle-speed figure found",
+    "notes": "NOT Fortuner data. Typical warm idle for a modern passenger common-rail diesel is about 700-800 rpm. Replace with a measured value (an OBD reading from a real car) when available."
+  },
+  "max_engine_speed_rpm": {
+    "value": 4600,
+    "unit": "rpm",
+    "class": "independent",
+    "confidence": "low",
+    "variant": "1GD-FTV (generic)",
+    "source": "https://en.wikipedia.org/wiki/Toyota_GD_engine",
+    "notes": "Wikipedia infobox 'max engine speed'; no Toyota source found for redline or fuel cut. Related data point: a Peugeot 1.5 BlueHDi recording notes that pump caps at 4000 rpm (different engine). Treat fuel cut as 4400-4600 until verified."
+  },
+  "torque_curve_AT_estimate": {
+    "value": [[750, 220], [1000, 330], [1200, 411], [1400, 460], [1600, 500], [2000, 500], [2400, 500], [2800, 500], [3000, 477], [3200, 448], [3400, 421], [3600, 384], [4000, 310], [4400, 239]],
+    "unit": "[rpm, Nm] full-load engine torque",
+    "class": "estimate",
+    "confidence": "low",
+    "variant": "1GD-FTV 150 kW / 500 Nm (AT)",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "NO dyno chart or published Toyota curve was found; this curve is built from peak values. 1600-2800: official 500 Nm plateau. 3000/3200/3400: T = P/omega with official 150 kW (150000/(2*pi*rpm/60)) = 477.5/447.6/421.3 Nm. 1200: 500*(370/450) = 411 Nm, scaling the 2015 release's '370 Nm @ 1200 rpm' for the 450 Nm engine (https://global.toyota/detail/8348091). 1400: linear interpolation. 750 and 1000 rpm: assumption (turbo not spooled). 3600/4000/4400: assumption of power falling to about 145/130/110 kW past the power band. Replace with a measured dyno sheet if one is found."
+  },
+  "torque_curve_MT_estimate": {
+    "value": [[750, 200], [1000, 300], [1200, 380], [1400, 420], [3400, 420], [3600, 384], [4000, 310], [4400, 239]],
+    "unit": "[rpm, Nm]",
+    "class": "estimate",
+    "confidence": "low",
+    "variant": "1GD-FTV 6MT (420 Nm)",
+    "source": "https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf",
+    "notes": "Plateau 420 Nm 1400-3400 is official. 420 Nm at 3400 rpm = 149.5 kW, consistent with 150 kW. Points below 1400 and above 3400 are assumptions."
+  },
+  "engine_rotating_inertia": {
+    "value": 0.25,
+    "unit": "kg*m^2",
+    "class": "assumption",
+    "confidence": "low",
+    "variant": "generic 2.5-3.0 L 4-cyl diesel incl. flywheel/flexplate and torque-converter impeller",
+    "source": "none: no published figure",
+    "notes": "NOT Fortuner data. A typical tuning range for sims is 0.15-0.35 kg*m^2. Tune by matching free-rev rate in recordings."
+  },
+
+  "transmission": {
+    "value": "Aisin AC60F 6-speed torque-converter automatic, sequential shift + paddles",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "Fortuner 2.8 4x4 AT",
+    "source": "https://toyota-indus.com/wp-content/uploads/2023/06/Spec-Sheet-Toyota-Fortuner-GR-S.pdf",
+    "notes": "Toyota Pakistan spec sheet lists the code AC60F for Fortuner GR-S/Legender/Sigma 4 (1GD). Toyota India: '6AT [Sequential Shift + Paddle Shift + Shiftlock]'. CarExpert AU also gives AC60F."
+  },
+  "gear_ratios_AT": {
+    "value": [3.600, 2.090, 1.488, 1.000, 0.687, 0.580],
+    "unit": "ratio (1st..6th)",
+    "class": "official",
+    "confidence": "high",
+    "variant": "Hilux 2.8 6AT (Toyota UK); same set listed for Fortuner 2.8 AT (Russia) by drom.ru",
+    "source": "https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf",
+    "notes": "Official figures are for the Hilux, which shares the 1GD/AC60F. Fortuner-specific confirmation: https://www.drom.ru/catalog/toyota/fortuner/305818/ (independent catalogue, same ratios). gearboxlist.com gives the same AC60F set."
+  },
+  "reverse_ratio_AT": {
+    "value": 3.732,
+    "unit": "ratio",
+    "class": "official",
+    "confidence": "high",
+    "variant": "Hilux 2.8 6AT; Fortuner per drom.ru",
+    "source": "https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf",
+    "notes": ""
+  },
+  "final_drive_AT": {
+    "value": 3.909,
+    "unit": "ratio",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "Fortuner 2.8 AT 4WD (Russia-market entry)",
+    "source": "https://www.drom.ru/catalog/toyota/fortuner/305818/",
+    "notes": "Toyota UK gives 3.909 for the Hilux 2.8 6AT (official, sister vehicle): https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf. No Toyota India figure found. A South African forum notes Toyota does not publish the Fortuner final drive."
+  },
+  "gear_ratios_MT_reference": {
+    "value": [4.784, 2.423, 1.443, 1.000, 0.826, 0.643],
+    "unit": "ratio (1st..6th), reverse 4.066, final drive 3.583",
+    "class": "official",
+    "confidence": "medium",
+    "variant": "Hilux 2.8 6MT (UK)",
+    "source": "https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf",
+    "notes": "For reference only (the sim target is the AT). Not verified for the Indian Fortuner MT."
+  },
+  "transfer_high_ratio": {
+    "value": 1.000,
+    "unit": "ratio",
+    "class": "estimate",
+    "confidence": "medium",
+    "variant": "Fortuner part-time transfer H2/H4",
+    "source": "https://www.4x4australia.com.au/reviews/4x4oty/4x4-of-the-year-finalists-toyota-fortuner-gxl",
+    "notes": "Not printed by Toyota; implied by the crawl-ratio math (see transfer_low_ratio). Toyota part-time transfers are 1:1 in high."
+  },
+  "transfer_low_ratio": {
+    "value": 2.566,
+    "unit": "ratio",
+    "class": "estimate",
+    "confidence": "medium",
+    "variant": "Fortuner 2.8 4x4 (AU 2016 test)",
+    "source": "https://www.4x4australia.com.au/reviews/4x4oty/4x4-of-the-year-finalists-toyota-fortuner-gxl",
+    "notes": "Derived: 4x4 Australia publishes crawl ratio 36.1:1 (auto) and 44.0:1 (manual). Low = 36.1 / (3.600 x 3.909) = 2.565; manual check 44.0 / (4.784 x 3.583) = 2.567. Both match the 2.566 low ratio Toyota uses in its VF-family transfers (Lexus GX tech doc, seen in a search snippet only). The test car was the 2016 450 Nm version; the gearbox and transfer are assumed unchanged."
+  },
+  "crawl_ratio_AT": {
+    "value": 36.1,
+    "unit": ":1",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "Fortuner 2.8 auto (AU, 2016 article)",
+    "source": "https://www.4x4australia.com.au/reviews/4x4oty/4x4-of-the-year-finalists-toyota-fortuner-gxl",
+    "notes": "Manual: 44.0:1."
+  },
+  "torque_converter_stall_rpm": {
+    "value": "not found",
+    "unit": "rpm",
+    "class": "assumption",
+    "confidence": "low",
+    "variant": "",
+    "source": "none",
+    "notes": "No published stall speed found. Typical stall for a diesel SUV TC is about 1800-2400 rpm (assumption, NOT Fortuner data)."
+  },
+  "shift_points": {
+    "value": "not found",
+    "unit": "rpm",
+    "class": "assumption",
+    "confidence": "low",
+    "variant": "",
+    "source": "https://www.4x4australia.com.au/reviews/4x4oty/4x4-of-the-year-finalists-toyota-fortuner-gxl",
+    "notes": "No test reports shift rpm. Qualitative: 4x4 Australia says the 6AT 'shifts back a gear at the slightest incline' and drops back quickly to control descent speed. Suggested sim default (assumption): upshift at about 2200-2600 rpm part throttle and about 3600-3800 rpm at full throttle (power band ends at 3400). Drive modes ECO/NORMAL/SPORT are official (Toyota India)."
+  },
+
+  "kerb_weight_kg_MY_official": {
+    "value": 2160,
+    "unit": "kg",
+    "class": "official",
+    "confidence": "high",
+    "variant": "Malaysia Fortuner 2.8 VRZ AT 4x4 (2023 brochure)",
+    "source": "https://www.toyota.com.my/content/dam/malaysia/model-brochures/brochures/Fortuner-E-brochure-2023-v2.pdf",
+    "notes": "Gross 2,740 kg. Toyota India does NOT publish kerb weight in its spec sheet."
+  },
+  "kerb_weight_kg_PK_official": {
+    "value": 2100,
+    "unit": "kg",
+    "class": "official",
+    "confidence": "high",
+    "variant": "Pakistan Fortuner GR-S/Legender/Sigma 4 (4x4 1GD AT), 'Min. Options'",
+    "source": "https://toyota-indus.com/wp-content/uploads/2023/06/Spec-Sheet-Toyota-Fortuner-GR-S.pdf",
+    "notes": "Minimum-options figure; GVW 2,730 kg."
+  },
+  "kerb_weight_kg_AU": {
+    "value": [2175, 2185, 2190],
+    "unit": "kg (GX, GXL, Crusade)",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "Australia Fortuner 2.8 auto 4x4, post-2020 150 kW",
+    "source": "https://www.4x4australia.com.au/?p=351221",
+    "notes": "GVM 3,100 kg (AU rating). A CarExpert 2021 GX search snippet said 2130 kg unladen (low confidence, not fetched)."
+  },
+  "kerb_weight_kg_RU": {
+    "value": 2195,
+    "unit": "kg",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "Russia Fortuner 2.8 AT 4WD (2020-2022)",
+    "source": "https://www.drom.ru/catalog/toyota/fortuner/305818/",
+    "notes": "Gross 2,750 kg."
+  },
+  "kerb_weight_kg_IN_aggregators": {
+    "value": [2180, 2190, 2220],
+    "unit": "kg",
+    "class": "independent",
+    "confidence": "low",
+    "variant": "India (variant often unspecified)",
+    "source": "https://www.91wheels.com/cars/toyota/fortuner/specifications",
+    "notes": "Search-snippet values only: 91wheels 2180, carbikebhp 4x4 AT 2190, Team-BHP spec page 2220 (probably the MT). CarDekho's 4WD AT page shows 2560 kg, which is likely a data error (close to GVW). Suggested sim value: 2180 kg plus driver."
+  },
+  "gross_vehicle_weight_kg": {
+    "value": 2735,
+    "unit": "kg",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India diesel 4WD (Fortuner and Legender)",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "2WD diesel 2610 kg; petrol 2WD 2510 kg."
+  },
+  "axle_weight_split_front": {
+    "value": 0.53,
+    "unit": "fraction of kerb weight on front axle",
+    "class": "assumption",
+    "confidence": "low",
+    "variant": "generic front-engine body-on-frame diesel 7-seat SUV, unladen",
+    "source": "none: no Fortuner axle-load figure found",
+    "notes": "NOT Fortuner data. Typical 52-55% front unladen; shifts rearward with passengers and luggage."
+  },
+  "length_mm": {
+    "value": 4795,
+    "unit": "mm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India Fortuner and Legender",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Printed 479.5 cm. drom.ru Russia lists 4870 (different bumpers)."
+  },
+  "width_mm": {
+    "value": 1855,
+    "unit": "mm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Excludes mirrors."
+  },
+  "height_mm": {
+    "value": 1835,
+    "unit": "mm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": ""
+  },
+  "wheelbase_mm": {
+    "value": 2745,
+    "unit": "mm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": ""
+  },
+  "track_front_mm": {
+    "value": 1545,
+    "unit": "mm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "Pakistan Fortuner (all 4x4 1GD grades); Malaysia 2.8 VRZ",
+    "source": "https://toyota-indus.com/wp-content/uploads/2023/06/Spec-Sheet-Toyota-Fortuner-GR-S.pdf",
+    "notes": "Not printed by Toyota India. Same 1545/1555 in the Malaysia brochure and drom.ru."
+  },
+  "track_rear_mm": {
+    "value": 1555,
+    "unit": "mm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "Pakistan/Malaysia Fortuner",
+    "source": "https://toyota-indus.com/wp-content/uploads/2023/06/Spec-Sheet-Toyota-Fortuner-GR-S.pdf",
+    "notes": ""
+  },
+  "overhang_front_rear_mm": {
+    "value": [990, 1060],
+    "unit": "mm",
+    "class": "official",
+    "confidence": "high",
+    "variant": "Pakistan Fortuner",
+    "source": "https://toyota-indus.com/wp-content/uploads/2023/06/Spec-Sheet-Toyota-Fortuner-GR-S.pdf",
+    "notes": "990 + 2745 + 1060 = 4795, matches India length."
+  },
+  "ground_clearance_mm_IN_autocar": {
+    "value": 225,
+    "unit": "mm",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "India GR-S/Legender 4x4 AT spec page",
+    "source": "https://www.autocarindia.com/cars/toyota/fortuner/2.8-diesel-4x4-at-legender/specifications",
+    "notes": "drom.ru (Russia) also 225. CarDekho India 4WD AT page: 220 mm unladen."
+  },
+  "ground_clearance_mm_PK_MY_official": {
+    "value": 279,
+    "unit": "mm (min. running ground clearance)",
+    "class": "official",
+    "confidence": "high",
+    "variant": "Pakistan and Malaysia Fortuner",
+    "source": "https://toyota-indus.com/wp-content/uploads/2023/06/Spec-Sheet-Toyota-Fortuner-GR-S.pdf",
+    "notes": "Toyota's 'min running ground clearance' figure; measured differently from the 225 mm figure. Conflict kept."
+  },
+  "ground_clearance_mm_AU": {
+    "value": 216,
+    "unit": "mm",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "Australia Fortuner",
+    "source": "https://www.carexpert.com.au/car-reviews/2021-toyota-fortuner-crusade-off-road-review",
+    "notes": "Also 216 at https://www.4x4australia.com.au/?p=351221"
+  },
+  "approach_angle_deg": {
+    "value": 29.2,
+    "unit": "deg",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India Fortuner/Legender",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Printed 0.51 rad = 29.2 deg. Australian sources: 29 deg."
+  },
+  "departure_angle_deg": {
+    "value": 25.2,
+    "unit": "deg",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India Fortuner/Legender",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Printed 0.44 rad = 25.2 deg. Australian sources: 25 deg."
+  },
+  "rampover_angle_deg": {
+    "value": 23.5,
+    "unit": "deg",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "Australia Fortuner",
+    "source": "https://www.4x4australia.com.au/?p=351221",
+    "notes": "Toyota India does not publish this."
+  },
+  "wading_depth_mm": {
+    "value": 700,
+    "unit": "mm",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "India 4x4",
+    "source": "https://www.autocarindia.com/cars/toyota/fortuner/2.8-diesel-4x4-at-legender/specifications",
+    "notes": "Also 700 mm in Australian sources."
+  },
+  "turning_radius_m": {
+    "value": 5.8,
+    "unit": "m",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India Fortuner/Legender",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Printed 580 cm (Toyota tyre-based). Toyota Pakistan lists 'Min. Turning Radius Body 6.2 m'. AU turning circle 11.6 m (snippet only)."
+  },
+  "fuel_tank_l": {
+    "value": 80,
+    "unit": "L",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": ""
+  },
+
+  "suspension_front": {
+    "value": "Independent double wishbone, coil springs, stabiliser bar",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India Fortuner/Legender",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Coil spring and stabiliser wording from the Malaysia brochure."
+  },
+  "suspension_rear": {
+    "value": "Rigid axle, 4-link with coil springs, lateral control rod (Panhard), stabiliser bar",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "Malaysia brochure wording; India says '4-Link With Coil Spring'",
+    "source": "https://www.toyota.com.my/content/dam/malaysia/model-brochures/brochures/Fortuner-E-brochure-2023-v2.pdf",
+    "notes": "Malaysia: '4-link coil Spring with Lateral Control Rod & Stabiliser'. Toyota India: 4-link with coil spring, stabiliser front and rear, plus 'Pitch & Bounce Control' (4WD/Legender). CONFLICT: Autocar India's spec page says 'independent multi-link', which is likely a data error. Pakistan GR-S adds monotube shock absorbers."
+  },
+  "tyre_size_4x4": {
+    "value": "265/60 R18",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India 4WD Fortuner and Legender (also GR-S)",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "2WD Fortuner and petrol: 265/65 R17. Legender (2WD and 4WD): 265/60 R18 per the Legender spec sheet."
+  },
+  "tyre_load_speed_index": {
+    "value": "110H",
+    "unit": "",
+    "class": "independent",
+    "confidence": "low",
+    "variant": "Australia Crusade 265/60R18 (2016 article)",
+    "source": "https://www.4x4australia.com.au/reviews/4x4oty/4x4-of-the-year-finalists-toyota-fortuner-gxl",
+    "notes": "Not verified for India."
+  },
+  "tyre_oe_brand": {
+    "value": "not found",
+    "unit": "",
+    "class": "assumption",
+    "confidence": "low",
+    "variant": "India 4x4",
+    "source": "none",
+    "notes": "No source names the factory-fitted brand for Indian 2021+ 4x4 cars. Malaysia brochure says 'Highway Terrain' tyres on the 18-inch fitment. Check a real car's sidewall."
+  },
+  "tyre_overall_diameter_mm": {
+    "value": 775.2,
+    "unit": "mm (unloaded, nominal)",
+    "class": "estimate",
+    "confidence": "medium",
+    "variant": "265/60 R18",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "18 x 25.4 + 2 x (265 x 0.60) = 457.2 + 318 = 775.2 mm. Nominal rolling radius about 0.375 m (unloaded 0.3876 x ~0.97 loaded-rolling factor, an assumption)."
+  },
+  "wheel_size": {
+    "value": "8J x 18",
+    "unit": "",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "Russia Fortuner 2.8 AT 4WD",
+    "source": "https://www.drom.ru/catalog/toyota/fortuner/305818/",
+    "notes": "18-inch alloys on India 4x4 (official tyre size). Rim width not published by Toyota India."
+  },
+  "brakes": {
+    "value": "Ventilated discs front and rear; front 4-piston fixed caliper",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India (discs), Malaysia (caliper detail)",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Caliper: https://www.toyota.com.my/content/dam/malaysia/model-brochures/brochures/Fortuner-E-brochure-2023-v2.pdf. Note the Hilux uses rear drums, the Fortuner rear discs."
+  },
+  "brake_disc_front_mm": {
+    "value": 338,
+    "unit": "mm diameter x 28 mm thick, ventilated",
+    "class": "independent",
+    "confidence": "low",
+    "variant": "Fortuner N15/N16 2.7 petrol 4x4 TGN156 (2015-) parts catalogue",
+    "source": "https://www.bremboparts.com/europe/en/catalogue/toyota-fortuner-n15-n16-2-7-4x4-tgn156/000116368-1",
+    "notes": "Petrol TGN156 fitment; the diesel GUN156 is assumed to share it (an aftermarket kit title says '338mm rotors for Toyota Fortuner GUN156', search snippet only). Not verified for the 1GD."
+  },
+  "brake_disc_rear_mm": {
+    "value": 312,
+    "unit": "mm diameter x 18 mm thick, ventilated",
+    "class": "independent",
+    "confidence": "low",
+    "variant": "Fortuner TGN156 2.7 4x4 parts catalogue",
+    "source": "https://www.bremboparts.com/europe/en/catalogue/toyota-fortuner-n15-n16-2-7-4x4-tgn156/000116368-1",
+    "notes": "Same caveat as the front."
+  },
+  "brake_aids": {
+    "value": "ABS, EBD, BA, VSC, TRC, A-TRC (4WD), HAC, DAC (4WD), Emergency Brake Signal",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India Fortuner 4WD",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": ""
+  },
+  "steering_type": {
+    "value": "Rack and pinion, hydraulic power assist with VFC (Variable Flow Control), tilt and telescopic",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India Fortuner diesel / Legender",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Rack & pinion wording from the Malaysia brochure. Autocar India calls it heavy at parking speeds."
+  },
+  "steering_ratio_overall": {
+    "value": 19.5,
+    "unit": ":1",
+    "class": "assumption",
+    "confidence": "low",
+    "variant": "generic hydraulic-rack body-on-frame SUV",
+    "source": "none: no Fortuner steering ratio found",
+    "notes": "NOT Fortuner data. Derived from assumed lock-to-lock 3.5 turns (630 deg of wheel each way from centre) over an estimated mean road-wheel lock of about 32 deg: 630/32 = 19.7, rounded."
+  },
+  "steering_lock_to_lock_turns": {
+    "value": 3.5,
+    "unit": "turns",
+    "class": "assumption",
+    "confidence": "low",
+    "variant": "generic",
+    "source": "none",
+    "notes": "NOT Fortuner data; no review found quoting it."
+  },
+  "max_outer_wheel_steer_angle_deg": {
+    "value": 28.2,
+    "unit": "deg",
+    "class": "estimate",
+    "confidence": "low",
+    "variant": "India 5.8 m turning radius",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Bicycle-model estimate: asin(wheelbase / R) = asin(2.745 / 5.8) = 28.2 deg for the outer front wheel. Inner wheel would be about 35-37 deg with Ackermann (assumption)."
+  },
+  "drag_coefficient_Cd": {
+    "value": 0.394,
+    "unit": "",
+    "class": "estimate",
+    "confidence": "low",
+    "variant": "PROXY: Toyota Hilux (AN120/130) official Cd",
+    "source": "https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf",
+    "notes": "No published Fortuner Cd found. The Hilux shares front structure and a similar frontal shape; the Fortuner's closed wagon body probably differs by a few hundredths. Typical SUV range 0.35-0.45."
+  },
+  "frontal_area_m2": {
+    "value": 2.89,
+    "unit": "m^2",
+    "class": "estimate",
+    "confidence": "low",
+    "variant": "India dimensions",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "A = 0.85 x width x height = 0.85 x 1.855 x 1.835 = 2.89 m^2. The 0.85 fill factor is an assumption for boxy SUVs. CdA = 0.394 x 2.89 = 1.14 m^2."
+  },
+  "rolling_resistance_coeff": {
+    "value": 0.012,
+    "unit": "",
+    "class": "assumption",
+    "confidence": "low",
+    "variant": "generic H/T SUV tyre on asphalt",
+    "source": "none",
+    "notes": "NOT Fortuner data. Use about 0.03-0.08 for gravel and dirt."
+  },
+
+  "drivetrain_4wd_system": {
+    "value": "Part-time 4WD: H2 / H4 / L4 via electronic dial ('Electronic Drive [2WD/4WD] Control'), Automatic Disconnecting Differential (ADD) at front",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India 4WD; ADD wording from Malaysia/Pakistan",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Pakistan: 'Part-Time H2, H4, L4, Switch Type'. Malaysia: 'Part-time 4WD with Automatic Disconnecting Differential (ADD)'. No centre differential: H4/L4 lock front and rear shafts, so avoid tyre wind-up on high-grip surfaces in the sim."
+  },
+  "rear_diff_lock": {
+    "value": "Electric rear differential lock (button); engages only in L4",
+    "unit": "",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "Fortuner 4x4 (Australia 2021 review); India lists 'Lockable Differential - 4WD Variants'",
+    "source": "https://www.carexpert.com.au/car-reviews/2021-toyota-fortuner-crusade-off-road-review",
+    "notes": "CarExpert: only engages in low range; most electronic aids are disabled when it is engaged; engagement can be delayed while the indicator flashes. India 'Lockable Differential' is official (Toyota India spec sheet)."
+  },
+  "auto_lsd": {
+    "value": "Auto-LSD (brake-based limited-slip control)",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India Fortuner/Legender",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Listed as 'Auto-Limited Slip Differential'. Toyota's Auto LSD is a TRC-based brake function, not a mechanical LSD (general Toyota knowledge, not sourced here)."
+  },
+  "driver_aids": {
+    "value": "VSC with BA, TRC, A-TRC, HAC, DAC (4WD only), ABS+EBD",
+    "unit": "",
+    "class": "official",
+    "confidence": "high",
+    "variant": "India Fortuner 4WD",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "A-TRC brakes a spinning wheel to send torque across an open diff (Malaysia brochure: 'the system brakes that wheel and transfers' torque)."
+  },
+  "dac_behaviour": {
+    "value": "Button-activated below 30 km/h in L4 (some sources say L4 or H4); brakes each wheel to hold a low descent speed; DAC lamp on and slip lamp flashing while active",
+    "unit": "",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "Fortuner 4x4 (Indonesia, citing owner's manual, 2020)",
+    "source": "https://otomotifnet.gridoto.com/read/232102761/toyota-fortuner-4x4-punya-fitur-sakti-hadapi-turunan-curam-cukup-tekan-tombol",
+    "notes": "Gridoto, citing the Fortuner owner's manual: activates in L4 or H4 below 30 km/h. It will not activate with the rear diff locked, in P, with the accelerator or brake pressed, above 30 km/h, or with overheated brakes. Toyota India lists DAC for 4WD variants only. Related official Toyota manual (2025 Tacoma OM04011U, different vehicle): https://assets.sia.toyota.com/publications/en/om-x/OM04011U/topics/chapter4/ch04se050431.html. It describes a selectable 4-30 km/h target, cancellation above about 30 km/h, and that the stop lamps light. No Fortuner target descent speed found; sim suggestion (assumption): hold about 5-7 km/h in L4."
+  },
+  "hac_behaviour": {
+    "value": "Hill-start assist holds brake pressure briefly after releasing the brake on an incline",
+    "unit": "",
+    "class": "assumption",
+    "confidence": "low",
+    "variant": "generic Toyota HAC",
+    "source": "https://www.toyotabharat.com/documents/brochures/fortuner-mmc/combined-specsheet.pdf",
+    "notes": "Fitment is official (HAC listed). The hold duration (about 2 s) is a typical Toyota value, NOT verified for the Fortuner."
+  },
+
+  "perf_0_100_kmh_autocar_india_AT": {
+    "value": 9.96,
+    "unit": "s",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "India Fortuner 2.8 diesel AT (2WD/4WD not stated), Autocar India test",
+    "source": "https://www.autocarindia.com/auto-features/2-reasons-to-buy-the-toyota-fortuner-2-reasons-not-to-440833",
+    "notes": "Article dated 24 Jul 2026. Autocar India spec page also lists 11.38 s for the Neo Drive (48V) with three occupants."
+  },
+  "perf_0_100_kmh_autocar_india_2021_review": {
+    "value": 11.2,
+    "unit": "s",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "2021 facelift (204 PS/500 Nm), Autocar India review by Shapur Kotwal, 18 Feb 2021",
+    "source": "https://www.autocarindia.com/car-reviews/2021-toyota-fortuner-fortuner-legender-review-test-drive-419963",
+    "notes": "CONFLICTS with the 9.96 s above; both kept. The same review says 20-80 km/h is 'a second quicker than the earlier one' (no absolute figure)."
+  },
+  "perf_0_100_kmh_legender_4x2_AT_zigwheels": {
+    "value": 10.58,
+    "unit": "s",
+    "class": "independent",
+    "confidence": "high",
+    "variant": "India Legender 2.8 AT 4x2, ZigWheels road test (Arun Shenoy, 20 Apr 2021)",
+    "source": "https://zigwheels.com/reviews-advice/reviews/toyota-fortuner-legender-road-test-review/41818",
+    "notes": "CarDekho's Legender review (15 Apr 2021) gives the same 10.58 s: https://www.cardekho.com/road-test/toyota-fortuner-legender-review-719.htm. 4x2, so about 100 kg lighter than the 4x4."
+  },
+  "perf_20_80_kmh_kickdown_legender_4x2_AT": {
+    "value": 6.7,
+    "unit": "s",
+    "class": "independent",
+    "confidence": "high",
+    "variant": "India Legender 2.8 AT 4x2 (ZigWheels; CarDekho says 6.71 s in-gear)",
+    "source": "https://zigwheels.com/reviews-advice/reviews/toyota-fortuner-legender-road-test-review/41818",
+    "notes": "Fuel efficiency (same test): 10.52 km/l city, 15.26 km/l highway."
+  },
+  "perf_SA_2022_4x4_AT_full_set": {
+    "value": {"0_60": 4.26, "0_100": 9.79, "0_120": 13.24, "0_160": 24.36, "400m": 16.7, "400m_speed_kmh": 136, "80_120": 6.50, "120_160": 11.12},
+    "unit": "s (speeds km/h)",
+    "class": "independent",
+    "confidence": "high",
+    "variant": "South Africa Fortuner 2.8 GD-6 4x4 VX AT facelift, theauto.page road test, 21 Jan 2022",
+    "source": "https://theauto.page/road-tested/toyota-fortuner-road-test/",
+    "notes": "Not an Indian test, but the same 150 kW/500 Nm 4x4 AT. Braking not reported. Altitude not stated (SA tests are often run at Gauteng altitude, which would slow a turbo-diesel only slightly)."
+  },
+  "perf_0_100_kmh_uk_hilux_official": {
+    "value": 10.7,
+    "unit": "s (0-62 mph)",
+    "class": "official",
+    "confidence": "medium",
+    "variant": "Toyota UK Hilux 2.8 6AT double cab (heavier/longer sister vehicle)",
+    "source": "https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf",
+    "notes": "Manufacturer claim. drom.ru Russia Fortuner 2.8 AT entry also shows 10.7 s / 180 km/h."
+  },
+  "perf_0_80_0_100_indianautosblog_snippet": {
+    "value": {"0_80": 6.98, "0_100": 9.88},
+    "unit": "s",
+    "class": "independent",
+    "confidence": "low",
+    "variant": "Fortuner 4x4 AT vs Ford Endeavour test (model year not stated)",
+    "source": "https://indianautosblog.com/ford-endeavor-vs-toyota-fortuner-acceleration-test-p323581",
+    "notes": "SEARCH SNIPPET ONLY: the site refused the connection when fetched. Indianauto.com also reported 9.80 s for 0-100 and '100-0 in 3.3 s' (time, not distance), snippet only: https://indianauto.com/stories/toyota-fortuner-facelift-0-100-kmph-acceleration-nid8017"
+  },
+  "perf_0_20_0_40_kmh": {
+    "value": "not found",
+    "unit": "s",
+    "class": "independent",
+    "confidence": "low",
+    "variant": "",
+    "source": "none",
+    "notes": "No published 0-20 or 0-40 for the facelift. Nearest: SA test 0-60 4.26 s."
+  },
+  "perf_braking_100_0_m_prefacelift_AT": {
+    "value": 45.23,
+    "unit": "m",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "PRE-FACELIFT India Fortuner 2.8 AT 4WD (177 PS/450 Nm), CarDekho/ZigWheels test, 9 Dec 2020",
+    "source": "https://cardekho.com/india-car-news/mg-gloster-vs-ford-endeavour-vs-toyota-fortuner-realworld-performance-comparison-26451.htm",
+    "notes": "No facelift (2021+) Indian braking figure was found. Same body, tyres and brake layout assumed. In the same test: 0-100 12.48 s, 20-80 kickdown 7.93 s."
+  },
+  "perf_braking_80_0_m_prefacelift_AT": {
+    "value": 28.08,
+    "unit": "m",
+    "class": "independent",
+    "confidence": "medium",
+    "variant": "PRE-FACELIFT India Fortuner 2.8 AT 4WD, CarDekho, Dec 2020",
+    "source": "https://cardekho.com/india-car-news/mg-gloster-vs-ford-endeavour-vs-toyota-fortuner-realworld-performance-comparison-26451.htm",
+    "notes": ""
+  },
+  "perf_braking_cardekho_2016_4x4_AT": {
+    "value": {"100_0_m": 43.88, "second_figure_m": 27.01},
+    "unit": "m",
+    "class": "independent",
+    "confidence": "low",
+    "variant": "PRE-FACELIFT India Fortuner 2.8 4WD AT (2016 road test data shown on spec page)",
+    "source": "https://www.cardekho.com/overview/Toyota_Fortuner/Toyota_Fortuner_2.8_4WD_AT.htm",
+    "notes": "The page labels 27.01 m as '60-0', which is implausibly long for 60 km/h and is probably the 80-0 figure. The same page lists tested 0-100 12.14 s and top speed 157.3 km/h, and stale specs (174.5 bhp/450 Nm, 2560 kg kerb)."
+  },
+  "perf_braking_autocar_80_0_older": {
+    "value": 24.6,
+    "unit": "m",
+    "class": "independent",
+    "confidence": "low",
+    "variant": "OLDER-GENERATION Fortuner (pre-2016), Autocar India; search snippet only",
+    "source": "https://www.autocarindia.com/car-reviews/toyota-fortuner-review-test-drive--293898",
+    "notes": "Snippet only, different generation. Listed only to show the spread."
+  },
+  "top_speed_kmh_claimed": {
+    "value": 180,
+    "unit": "km/h",
+    "class": "official",
+    "confidence": "medium",
+    "variant": "South Africa Fortuner 2.8 GD-6 claim; Russia drom.ru entry; UK Hilux 2.8 AT 109 mph (175 km/h)",
+    "source": "https://theauto.page/road-tested/toyota-fortuner-road-test/",
+    "notes": "Toyota India publishes no top speed. Aggregators (91wheels) list 190 km/h, snippet only, low."
+  },
+  "top_speed_kmh_tested_india": {
+    "value": [157.3, 175],
+    "unit": "km/h",
+    "class": "independent",
+    "confidence": "low",
+    "variant": "PRE-FACELIFT: CarDekho 2.8 4WD AT page (157.3); Thrustzone 2.8 review (175, snippet only)",
+    "source": "https://www.cardekho.com/overview/Toyota_Fortuner/Toyota_Fortuner_2.8_4WD_AT.htm",
+    "notes": "Thrustzone: https://www.thrustzone.com/toyota-fortuner-diesel-review-india-road-test/ (snippet: 'a true 175 km/hr', 0-100 13.46 s). Neither is a facelift test."
+  },
+  "perf_0_100_kmh_carwale_listed": {
+    "value": 13.25,
+    "unit": "s",
+    "class": "independent",
+    "confidence": "low",
+    "variant": "India 4x4 AT 2.8 (CarWale listing, described as 'claimed')",
+    "source": "https://www.carwale.com/toyota-cars/fortuner/4x4-at-28-diesel/",
+    "notes": "Snippet only; inconsistent with every measured figure. Probably a stale or ARAI-style figure."
+  },
+
+  "derived_kmh_per_1000rpm": {
+    "value": [10.4, 17.9, 25.1, 37.4, 54.4, 64.4],
+    "unit": "km/h per 1000 rpm in gears 1-6 (H range, no TC slip)",
+    "class": "estimate",
+    "confidence": "medium",
+    "variant": "265/60 R18, final drive 3.909, AC60F ratios",
+    "source": "https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220217M-Hilux-Tech-Spec.pdf",
+    "notes": "v = 1000 / (gear x 3.909) x 2*pi*r x 60/1000, with r = 0.3876 m unloaded (circumference 2.435 m). 6th at 100 km/h is about 1550 rpm. 180 km/h is about 3310 rpm in 5th and 2795 rpm in 6th; 5th reaches the 4600 rpm limit at about 250 km/h, so top speed is limited by drag, not gearing. 1st reaches 3400 rpm at about 35 km/h. Using a loaded rolling radius (about 0.375 m) gives about 3% lower speeds. In L4, divide by 2.566."
+  }
+}

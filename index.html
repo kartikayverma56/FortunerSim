@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fortuner Drive Lab</title>
+<style>
+  :root { --bg: rgba(10,14,20,.72); --line: rgba(255,255,255,.12); --text: #e5e7eb; --muted: #94a3b8; --accent: #f97316; }
+  * { box-sizing: border-box }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0f14; color: var(--text); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif }
+  #app { position: fixed; inset: 0 }
+  .panel { position: fixed; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; backdrop-filter: blur(6px) }
+  #zone { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 6px 16px; font-weight: 600 }
+  #info { top: 12px; left: 12px; max-width: 420px; color: var(--muted) }
+  #info b { color: var(--text) } .on { color: #4ade80 } .warn { color: #fb7185 }
+  #wheels { top: 158px; left: 12px; display: grid; grid-template-columns: repeat(2, 132px); gap: 6px; padding: 8px }
+  .wh { display: flex; gap: 6px; align-items: stretch; font-size: 11px }
+  .wn { writing-mode: vertical-rl; transform: rotate(180deg); color: var(--muted); font-weight: 700 }
+  .bar { width: 10px; height: 54px; background: rgba(255,255,255,.08); border-radius: 3px; display: flex; flex-direction: column-reverse; overflow: hidden }
+  .bar div { width: 100% }
+  .wv { color: var(--muted) }
+  #dashWrap { bottom: 12px; left: 50%; transform: translateX(-50%); padding: 4px 8px }
+  #lamps { display: flex; gap: 4px; justify-content: center; margin-top: 2px }
+  .lamp { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); color: rgba(255,255,255,.25) }
+  .lamp.lit { color: #111; background: #facc15; border-color: #facc15 } #l-4l.lit, #l-4h.lit, #l-lock.lit { background: #4ade80; border-color: #4ade80 } #l-vscoff.lit { background: #f97316 }
+  #gmeter { position: fixed; bottom: 16px; right: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 50% }
+  #chart { position: fixed; top: 12px; right: 12px; border: 1px solid var(--line); border-radius: 10px }
+  #toast { position: fixed; top: 54px; left: 50%; transform: translateX(-50%); background: rgba(249,115,22,.95); color: #111; font-weight: 600; padding: 6px 14px; border-radius: 8px; opacity: 0; transition: opacity .3s; pointer-events: none }
+  #test-status { position: fixed; top: 92px; left: 50%; transform: translateX(-50%); color: #facc15; font-weight: 600; text-shadow: 0 1px 2px #000 }
+  #help, #testsPanel, #result, #inspector { display: none; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 32px)); max-height: 86vh; overflow: auto; z-index: 5 }
+  #help h3, .rt { margin: 0 0 8px; font-size: 15px; font-weight: 700; display: flex; justify-content: space-between }
+  .rt button, #help button { background: none; border: 0; color: var(--muted); font-size: 16px; cursor: pointer }
+  kbd { background: #1f2937; border: 1px solid #374151; border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font: 600 11px ui-monospace, monospace; color: #e5e7eb }
+  table { border-collapse: collapse; width: 100% } td { padding: 3px 6px; border-bottom: 1px solid var(--line) }
+  .note { color: var(--muted); font-size: 12px } pre { background: rgba(0,0,0,.35); padding: 8px; border-radius: 6px; font-size: 11px; white-space: pre-wrap }
+  .btn { background: var(--accent); color: #111; border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 700; cursor: pointer; margin: 4px 4px 4px 0 }
+  .btn.sec { background: #1f2937; color: var(--text); border: 1px solid #374151 }
+  select, input[type=range] { width: 100%; margin: 4px 0 8px; background: #111827; color: var(--text); border: 1px solid #374151; border-radius: 6px; padding: 5px }
+  #loading, #start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; background: radial-gradient(circle at 50% 40%, #1f2937, #05070a); z-index: 10; font-size: 16px }
+  #start { display: none; cursor: pointer; background: rgba(3,6,10,.72) }
+  #start .big { font-size: 28px; font-weight: 800 } #start .sub { color: var(--muted); max-width: 640px; text-align: center }
+  body.cockpit #dashWrap { left: auto; right: 132px; transform: scale(.62); transform-origin: bottom right; opacity: .9 }
+  body.cockpit #wheels, body.cockpit #chart { opacity: .55 }
+  @media (max-width: 760px) { #info, #chart, #wheels { display: none } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="loading">Loading…</div>
+<div id="start">
+  <div class="big">Fortuner Drive Lab</div>
+  <div>Toyota Fortuner 2.8 diesel AT 4×4 · physics at 1 kHz · Indian test ground</div>
+  <button class="btn">Click to start engine &amp; sound</button>
+  <div class="sub" id="modelNote"></div>
+  <div class="sub">Press <kbd>H</kbd> for controls · <kbd>T</kbd> for standard tests</div>
+</div>
+<div id="zone"></div>
+<div id="info" class="panel"></div>
+<div id="wheels" class="panel"></div>
+<canvas id="chart" width="340" height="150"></canvas>
+<div id="dashWrap" class="panel"><canvas id="dial" width="430" height="196"></canvas>
+  <div id="lamps"><span class="lamp" id="l-abs">ABS</span><span class="lamp" id="l-vsc">VSC</span><span class="lamp" id="l-vscoff">VSC OFF</span><span class="lamp" id="l-trc">TRC</span><span class="lamp" id="l-hac">HAC</span><span class="lamp" id="l-dac">DAC</span><span class="lamp" id="l-4h">4H</span><span class="lamp" id="l-4l">4L</span><span class="lamp" id="l-lock">LOCK</span></div></div>
+<canvas id="gmeter" width="110" height="110"></canvas>
+<div id="toast"></div>
+<div id="test-status"></div>
+
+<div id="help" class="panel">
+  <h3>Controls <button onclick="this.closest('#help').style.display='none'">✕</button></h3>
+  <table>
+    <tr><td><kbd>W</kbd>/<kbd>↑</kbd> throttle (<kbd>Shift</kbd> = half) · <kbd>S</kbd>/<kbd>↓</kbd> brake · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>Space</kbd> handbrake</td></tr>
+    <tr><td><kbd>Enter</kbd> start/stop engine · <kbd>G</kbd> selector P→R→N→D · <kbd>R</kbd> D↔R · <kbd>Z</kbd>/<kbd>X</kbd> manual −/+ (M mode)</td></tr>
+    <tr><td><kbd>1</kbd> 2H · <kbd>2</kbd> 4H · <kbd>3</kbd> 4L (stopped, in N) · <kbd>L</kbd> rear diff lock (4L) · <kbd>K</kbd> DAC (4L) · <kbd>V</kbd> VSC on/off</td></tr>
+    <tr><td><kbd>C</kbd> camera (chase, cockpit, bonnet, wheel, orbit, trackside) · drag in cockpit to look around</td></tr>
+    <tr><td><kbd>5</kbd> runway · <kbd>6</kbd> Indian road · <kbd>7</kbd> speed breakers · <kbd>8</kbd> off-road · <kbd>9</kbd> handling pad · <kbd>Backspace</kbd> recover</td></tr>
+    <tr><td><kbd>T</kbd> tests · <kbd>F</kbd> telemetry · <kbd>I</kbd> rig inspector · <kbd>M</kbd> mute · <kbd>B</kbd> sound mode (synth / samples / hybrid)</td></tr>
+    <tr><td>Gamepad: RT throttle · LT brake · left stick steer · B handbrake · Y camera · X engine · LB/RB manual shift · Start = selector</td></tr>
+  </table>
+  <p class="note">Physics: 6-DOF body, 4 unsprung masses, transient-slip tyres (Magic-Formula similarity), true IRC hump profiles with rigid-ring tyre contact, turbo-diesel with spool lag, torque converter + lock-up, 6AT, part-time 4×4 with wind-up, ABS / A-TRC / VSC / HAC / DAC. Parameters marked “assumption” in <code>src/physics/params.ts</code> are not published by Toyota and should be calibrated with real tests.</p>
+</div>
+
+<div id="testsPanel" class="panel">
+  <div class="rt">Standard tests <button onclick="this.closest('#testsPanel').style.display='none'">✕</button></div>
+  <p class="note">The same autopilot drives every run, so results are repeatable and comparable.</p>
+  <button class="btn" onclick="runTest('acc')">0–100 km/h</button>
+  <button class="btn" onclick="runTest('brake')">80–0 km/h braking</button>
+  <hr style="border-color:#1f2937">
+  <label>Speed breaker<select id="humpSel"></select></label>
+  <label>Crossing speed <b id="humpSpeedV">30 km/h</b><input type="range" id="humpSpeed" min="5" max="70" value="30"></label>
+  <button class="btn" onclick="runTest('hump')">Run speed-breaker test</button>
+</div>
+<div id="result" class="panel"></div>
+<div id="inspector" class="panel"></div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

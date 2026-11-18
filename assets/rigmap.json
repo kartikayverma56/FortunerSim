@@ -1,0 +1,12 @@
+{
+  "hub_FL": "WHEEL_LF",
+  "hub_FR": "WHEEL_RF",
+  "hub_RL": "WHEEL_LR",
+  "hub_RR": "WHEEL_RR",
+  "steering_wheel": "STEER_HR",
+  "needle_tacho": "ARROW_RPM",
+  "needle_speed": "ARROW_SPEED",
+  "needleSign": -1,
+  "speedDegPer20": 21.8,
+  "tachoDegPer1000": 40
+}
