@@ -1,0 +1,59 @@
+{
+  "loops": [
+    {
+      "file": "0772_off_ext.ogg",
+      "rpm": 775,
+      "load": "off",
+      "position": "exterior"
+    },
+    {
+      "file": "1395_off_ext.ogg",
+      "rpm": 1388,
+      "load": "off",
+      "position": "exterior"
+    },
+    {
+      "file": "1790_off_ext.ogg",
+      "rpm": 1796,
+      "load": "off",
+      "position": "exterior"
+    },
+    {
+      "file": "2440_off_ext.ogg",
+      "rpm": 2456,
+      "load": "off",
+      "position": "exterior"
+    },
+    {
+      "file": "3000_off_ext.ogg",
+      "rpm": 2858,
+      "load": "off",
+      "position": "exterior"
+    },
+    {
+      "file": "3460_off_ext.ogg",
+      "rpm": 3475,
+      "load": "off",
+      "position": "exterior"
+    },
+    {
+      "file": "4280_off_ext.ogg",
+      "rpm": 4317,
+      "load": "off",
+      "position": "exterior"
+    }
+  ],
+  "tuning": {
+    "samplePitchClamp": 0.4,
+    "sampleGain": 0.5,
+    "hybridSynthCore": 0.15,
+    "hybridDetail": 0.5,
+    "squealLevel": 1.8
+  },
+  "credits": [
+    "\"Renault Master F3500 dCi135 Engine RPM Ramp 2 Mono.wav\" by Soundholder, https://freesound.org/s/425846/, CC BY 3.0",
+    "\"Renault Master F3500 dCi135 Engine Start Up Idle Gas Pressing And Shut Down Mono.wav\" by Soundholder, https://freesound.org/s/425845/, CC BY 3.0",
+    "\"audi a4 b8 20tdi update engine set1 idle acceleration early gear shifting mono.wav\" by Soundholder, https://freesound.org/s/425397/, CC BY 3.0",
+    "\"bluehdi_rev_hold\" by Mihacappy, https://freesound.org/s/827860/, CC0"
+  ]
+}

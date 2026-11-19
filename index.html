@@ -41,10 +41,18 @@
   #start .big { font-size: 28px; font-weight: 800 } #start .sub { color: var(--muted); max-width: 640px; text-align: center }
   body.cockpit #dashWrap { left: auto; right: 132px; transform: scale(.62); transform-origin: bottom right; opacity: .9 }
   body.cockpit #wheels, body.cockpit #chart { opacity: .55 }
+  .lamp.ind { color: rgba(255,255,255,.25) } .lamp.ind.lit { background: #22c55e; border-color: #22c55e; color: #052e12 }
+  /* HUD modes (U): compact keeps every readout but parks a smaller cluster bottom-right, clear of the car */
+  body:not(.telemetry) #chart { display: none }
+  body.hud-compact:not(.telemetry) #wheels { display: none }
+  body.hud-compact #dashWrap { left: auto; right: 128px; bottom: 8px; transform: scale(.6); transform-origin: bottom right; opacity: .92 }
+  body.hud-compact #info { font-size: 11.5px; padding: 7px 10px; opacity: .9 }
+  body.hud-compact #gmeter { transform: scale(.85); transform-origin: bottom right }
+  body.hud-off #info, body.hud-off #wheels, body.hud-off #chart, body.hud-off #dashWrap, body.hud-off #gmeter, body.hud-off #zone { display: none }
   @media (max-width: 760px) { #info, #chart, #wheels { display: none } }
 </style>
 </head>
-<body>
+<body class="hud-compact">
 <div id="app"></div>
 <div id="loading">Loading…</div>
 <div id="start">
@@ -52,6 +60,7 @@
   <div>Toyota Fortuner 2.8 diesel AT 4×4 · physics at 1 kHz · Indian test ground</div>
   <button class="btn">Click to start engine &amp; sound</button>
   <div class="sub" id="modelNote"></div>
+  <div class="sub" id="gfxNote"></div>
   <div class="sub">Press <kbd>H</kbd> for controls · <kbd>T</kbd> for standard tests</div>
 </div>
 <div id="zone"></div>
@@ -59,7 +68,7 @@
 <div id="wheels" class="panel"></div>
 <canvas id="chart" width="340" height="150"></canvas>
 <div id="dashWrap" class="panel"><canvas id="dial" width="430" height="196"></canvas>
-  <div id="lamps"><span class="lamp" id="l-abs">ABS</span><span class="lamp" id="l-vsc">VSC</span><span class="lamp" id="l-vscoff">VSC OFF</span><span class="lamp" id="l-trc">TRC</span><span class="lamp" id="l-hac">HAC</span><span class="lamp" id="l-dac">DAC</span><span class="lamp" id="l-4h">4H</span><span class="lamp" id="l-4l">4L</span><span class="lamp" id="l-lock">LOCK</span></div></div>
+  <div id="lamps"><span class="lamp ind" id="l-indl">&#9664;</span><span class="lamp" id="l-abs">ABS</span><span class="lamp" id="l-vsc">VSC</span><span class="lamp" id="l-vscoff">VSC OFF</span><span class="lamp" id="l-trc">TRC</span><span class="lamp" id="l-hac">HAC</span><span class="lamp" id="l-dac">DAC</span><span class="lamp" id="l-4h">4H</span><span class="lamp" id="l-4l">4L</span><span class="lamp" id="l-lock">LOCK</span><span class="lamp ind" id="l-indr">&#9654;</span></div></div>
 <canvas id="gmeter" width="110" height="110"></canvas>
 <div id="toast"></div>
 <div id="test-status"></div>
@@ -70,10 +79,11 @@
     <tr><td><kbd>W</kbd>/<kbd>↑</kbd> throttle (<kbd>Shift</kbd> = half) · <kbd>S</kbd>/<kbd>↓</kbd> brake · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>Space</kbd> handbrake</td></tr>
     <tr><td><kbd>Enter</kbd> start/stop engine · <kbd>G</kbd> selector P→R→N→D · <kbd>R</kbd> D↔R · <kbd>Z</kbd>/<kbd>X</kbd> manual −/+ (M mode)</td></tr>
     <tr><td><kbd>1</kbd> 2H · <kbd>2</kbd> 4H · <kbd>3</kbd> 4L (stopped, in N) · <kbd>L</kbd> rear diff lock (4L) · <kbd>K</kbd> DAC (4L) · <kbd>V</kbd> VSC on/off</td></tr>
+    <tr><td><kbd>,</kbd> / <kbd>.</kbd> left / right indicator (cancels itself after the turn) · <kbd>/</kbd> hazard lights · <kbd>N</kbd> horn (hold)</td></tr>
     <tr><td><kbd>C</kbd> camera (chase, cockpit, bonnet, wheel, orbit, trackside) · drag in cockpit to look around</td></tr>
     <tr><td><kbd>5</kbd> runway · <kbd>6</kbd> Indian road · <kbd>7</kbd> speed breakers · <kbd>8</kbd> off-road · <kbd>9</kbd> handling pad · <kbd>Backspace</kbd> recover</td></tr>
-    <tr><td><kbd>T</kbd> tests · <kbd>F</kbd> telemetry · <kbd>I</kbd> rig inspector · <kbd>M</kbd> mute · <kbd>B</kbd> sound mode (synth / samples / hybrid)</td></tr>
-    <tr><td>Gamepad: RT throttle · LT brake · left stick steer · B handbrake · Y camera · X engine · LB/RB manual shift · Start = selector</td></tr>
+    <tr><td><kbd>T</kbd> tests · <kbd>F</kbd> telemetry (chart + wheel loads) · <kbd>U</kbd> HUD size (compact / full / off) · <kbd>I</kbd> rig inspector · <kbd>M</kbd> mute · <kbd>B</kbd> sound mode (synth / samples / hybrid) · <kbd>Q</kbd> graphics (Auto / Low / Medium / High)</td></tr>
+    <tr><td>Gamepad: RT throttle · LT brake · left stick steer · B handbrake · Y camera · X engine · LB/RB manual shift · Start = selector · D-pad ◀ ▶ indicators · L3 horn</td></tr>
   </table>
   <p class="note">Physics: 6-DOF body, 4 unsprung masses, transient-slip tyres (Magic-Formula similarity), true IRC hump profiles with rigid-ring tyre contact, turbo-diesel with spool lag, torque converter + lock-up, 6AT, part-time 4×4 with wind-up, ABS / A-TRC / VSC / HAC / DAC. Parameters marked “assumption” in <code>src/physics/params.ts</code> are not published by Toyota and should be calibrated with real tests.</p>
 </div>

@@ -3,7 +3,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Vehicle } from '../physics/vehicle';
+import { hsrpTexture, PLATE_ASPECT } from './plate';
 
 const CORNERS = ['FL', 'FR', 'RL', 'RR'] as const;
 type Corner = typeof CORNERS[number];
@@ -26,6 +28,12 @@ export class CarVisual {
   cockpitEye = new THREE.Vector3(-0.38, 0.78, -0.12); // body frame, RHD driver
   overrides: any = {};
   cockpitHide: THREE.Object3D[] = [];  // stand-in only: roof/glass shells that would enclose the cockpit camera
+  // lamps: emissive materials split per function / side before the draw-call merge (empty on the stand-in)
+  lampMats = { brake: [] as THREE.MeshStandardMaterial[], left: [] as THREE.MeshStandardMaterial[], right: [] as THREE.MeshStandardMaterial[] };
+  reverseLamps?: THREE.Mesh; plates?: THREE.Mesh;
+  private glassMats: THREE.MeshStandardMaterial[] = [];
+  private shadowProxyMat: THREE.Material | null = null;
+  private lampState = { brake: -1, reverse: false, left: false, right: false, interior: false };
 
   constructor() { this.root.add(this.align); }
 
@@ -47,6 +55,12 @@ export class CarVisual {
         const ex = asset?.extras || {};
         if (ex.author || ex.credit || asset?.copyright) this.report.credit = ex.credit || [ex.title ? `"${ex.title}"` : '', ex.author ? 'by ' + String(ex.author).replace(/\s*\(.*\)/, '') : '', ex.license ? '· ' + String(ex.license).replace(/\s*\(.*\)/, '') : '', ex.source ? '· ' + ex.source : ''].filter(Boolean).join(' ') || asset.copyright;
         this.setupModel(gltf.scene, veh);
+        this.materialPass(gltf.scene, veh);
+        this.addPlatesAndReverseLamps(gltf.scene, veh);
+        limitShadowCasters(this.root);
+        const casters = buildShadowProxy(this.root); this.shadowProxyMat = casters.mat; // one shadow-only mesh instead of ~45 shadow-pass draws
+        const merged = this.mergeStatic(gltf.scene);
+        this.report.warnings.push(`Draw-call merge: ${merged.before} static meshes → ${merged.after}; ${casters.n} shadow casters → 1 proxy`);
         return;
       } catch (e: any) { this.report.warnings.push('Failed to load ' + file + ': ' + e.message); }
     }
@@ -56,8 +70,21 @@ export class CarVisual {
     this.report.warnings.push('No GLB found in D:\\FortunerSim\\assets — showing the stand-in. Copy the rigged Fortuner GLB there and reload.');
   }
 
+  /** Merge every static mesh per material: ~310 car meshes → a few dozen draw calls (each was drawn twice with shadows). */
+  private mergeStatic(model: THREE.Object3D) {
+    const keep = new Set<THREE.Object3D>();
+    const add = (d?: DrivenNode) => { if (d) keep.add(d.node); };
+    for (const c of CORNERS) { const r = this.corners[c]; add(r.spin); add(r.steer); add(r.vert); add(r.caliper); }
+    add(this.rearAxle); add(this.steeringWheel); add(this.needleTacho); add(this.needleSpeed);
+    for (const o of this.cockpitHide) keep.add(o);
+    const total = bakeInto(model, keep);
+    // the moving parts (wheels, steering wheel, needles) are merged per material inside themselves too
+    for (const node of keep) { const r = bakeInto(node, keep); total.before += r.before; total.after += r.after; }
+    return total;
+  }
+
   private setupModel(model: THREE.Object3D, veh: Vehicle) {
-    model.traverse(o => { if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = true; const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial; if (m && 'envMapIntensity' in m) m.envMapIntensity = 1.2; } });
+    model.traverse(o => { if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     const names: string[] = []; model.traverse(o => { if (o.name) names.push(o.name); });
     this.report.nodes = names;
     const ov = this.overrides || {};
@@ -137,8 +164,101 @@ export class CarVisual {
     else if (sw) { const p = sw.getWorldPosition(new THREE.Vector3()); this.root.worldToLocal(p); this.cockpitEye.set(p.x, p.y + 0.36, p.z - 0.48); }
   }
 
+  /** Realism pass on the GLB's materials (the Sketchfab export marks most plastics as 40–90 % metal, the glass as a
+   *  mirror and the tyres as shiny plastic), and split the lamp materials by function and side so they can light up.
+   *  Runs in the body frame (root still at the origin), before the draw-call merge. */
+  private materialPass(model: THREE.Object3D, veh: Vehicle) {
+    const yWheel = veh.wheels[0].mount.y, zRear = -veh.b;
+    const variants = new Map<string, THREE.MeshStandardMaterial>();
+    const variant = (m: THREE.MeshStandardMaterial, tag: string, setup: (c: THREE.MeshStandardMaterial) => void) => {
+      const k = m.uuid + '|' + tag; let c = variants.get(k);
+      if (!c) { c = m.clone(); c.name = m.name + '_' + tag; setup(c); variants.set(k, c); }
+      return c;
+    };
+    const lamp = (c: THREE.MeshStandardMaterial, hex: number) => { c.emissive.setHex(hex); c.emissiveIntensity = 0; c.emissiveMap = null; c.userData.offColor = c.color.clone(); c.toneMapped = false; return c; }; // untone-mapped: lit LEDs stay red / amber instead of washing to salmon
+    const meshes: THREE.Mesh[] = []; model.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh && !Array.isArray(m.material)) meshes.push(m); });
+    const tuned = new Set<THREE.Material>(); const box = new THREE.Box3(), c = new THREE.Vector3();
+    model.updateMatrixWorld(true);
+    for (const mesh of meshes) {
+      const m = mesh.material as THREE.MeshStandardMaterial; if (!('metalness' in m)) continue;
+      if (!tuned.has(m)) { tuned.add(m); tuneMaterial(m); if (m.name === 'windows_glass') this.glassMats.push(m); }
+      box.setFromObject(mesh).getCenter(c);
+      const n = m.name;
+      if (n === 'r_tailight' && c.z < zRear - 0.4) mesh.material = variant(m, 'brake', v => this.lampMats.brake.push(lamp(v, 0xff0000)));
+      else if (n === 'r_glass' && c.y > yWheel + 1.0) mesh.material = variant(m, 'hmsl', v => this.lampMats.brake.push(lamp(v, 0xff0000))); // high-mount stop lamp
+      else if (n === 'ind_tailighjt' || n === 'indicator_signal') { const side = c.x > 0 ? 'left' : 'right'; mesh.material = variant(m, side, v => this.lampMats[side].push(lamp(v, 0xff6a00))); }
+      else if (n === 'chrome_only' && Math.abs(c.x) < 0.4 && c.y > yWheel + 0.95) mesh.material = variant(m, 'cabin', v => { v.color.setHex(0x2b3036); v.roughness = 0.3; v.envMapIntensity = 0.45; }); // interior mirror
+    }
+  }
+
+  /** HSRP plates over the model's own plate decals, and white reverse lamps on the inner (tailgate) tail-lamp sections. */
+  private addPlatesAndReverseLamps(model: THREE.Object3D, veh: Vehicle) {
+    const yWheel = veh.wheels[0].mount.y;
+    model.updateMatrixWorld(true);
+    const decals: THREE.Mesh[] = [], inds: THREE.Mesh[] = [];
+    model.traverse(o => {
+      const m = o as THREE.Mesh; if (!m.isMesh || Array.isArray(m.material)) return;
+      if (m.material.name === 'decal_int') decals.push(m);
+      if (/^ind_tailighjt/.test(m.material.name)) inds.push(m);
+    });
+    const rc = new THREE.Raycaster(), o = new THREE.Vector3(), d = new THREE.Vector3(), nW = new THREE.Vector3();
+    // plates: the model has flat "NEW FORTUNER" plate decals; find each one by casting rays at the bumpers
+    const geos: THREE.BufferGeometry[] = [];
+    for (const sgn of [1, -1]) {
+      const pts: THREE.Vector3[] = []; d.set(0, 0, -sgn);
+      for (let x = -0.5; x <= 0.5; x += 0.025) for (let y = yWheel - 0.4; y <= yWheel + 0.9; y += 0.02) {
+        rc.set(o.set(x, y, sgn * 6), d); rc.far = 12;
+        const h = rc.intersectObjects(decals, false)[0];
+        if (h?.face && Math.abs(nW.copy(h.face.normal).transformDirection(h.object.matrixWorld).z) > 0.9) pts.push(h.point.clone());
+      }
+      if (pts.length < 12) continue;
+      const zx = sgn > 0 ? Math.max(...pts.map(p => p.z)) : Math.min(...pts.map(p => p.z));
+      const bb = new THREE.Box3(); for (const p of pts) if (Math.abs(p.z - zx) < 0.02) bb.expandByPoint(p);
+      const ctr = bb.getCenter(new THREE.Vector3()), w = THREE.MathUtils.clamp(bb.max.x - bb.min.x + 0.025, 0.38, 0.52);
+      const g = new THREE.PlaneGeometry(w, w / PLATE_ASPECT); if (sgn < 0) g.rotateY(Math.PI);
+      g.translate(ctr.x, ctr.y, zx + sgn * 0.003); geos.push(g);
+    }
+    if (geos.length) {
+      const mat = new THREE.MeshStandardMaterial({ map: hsrpTexture(), roughness: 0.45, metalness: 0, envMapIntensity: 0.6, name: 'hsrp_plate' });
+      this.plates = new THREE.Mesh(mergeGeometries(geos, false)!, mat); this.plates.name = 'HSRP_plates'; this.plates.receiveShadow = true;
+      this.root.add(this.plates);
+    } else this.report.warnings.push('Plate decals not found: no number plates added');
+    // reverse lamps: just below the indicator strip on the innermost three segments of each side
+    const quads: THREE.BufferGeometry[] = [];
+    for (const side of [1, -1]) {
+      const segs = inds.map(m => ({ m, c: new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()) }))
+        .filter(e => Math.sign(e.c.x) === side && e.c.z < 0).sort((a, b) => Math.abs(a.c.x) - Math.abs(b.c.x)).slice(0, 3);
+      if (segs.length < 2) continue;
+      const bb = new THREE.Box3(); for (const e of segs) bb.expandByObject(e.m);
+      const ctr = bb.getCenter(new THREE.Vector3());
+      const g = new THREE.PlaneGeometry(Math.max(0.08, bb.max.x - bb.min.x) + 0.02, 0.034).rotateY(Math.PI); // faces rearward
+      g.translate(ctr.x, bb.min.y - REV_DROP, bb.min.z - 0.004); quads.push(g);
+    }
+    if (quads.length) {
+      this.reverseLamps = new THREE.Mesh(mergeGeometries(quads, false)!, new THREE.MeshBasicMaterial({ map: lampGlowTexture(), color: 0xfffaf0, transparent: true, depthWrite: false, toneMapped: false, name: 'reverse_lamp' }));
+      this.reverseLamps.name = 'Reverse_lamps'; this.reverseLamps.visible = false; this.root.add(this.reverseLamps);
+    }
+  }
+
+  /** Brake 0..1, reverse, left/right indicator lamp state (only touches materials when something changes). */
+  setLamps(brake: number, reverse: boolean, left: boolean, right: boolean) {
+    const s = this.lampState; brake = Math.round(brake * 20) / 20;
+    // lit: the lens colour gives way to the LED colour (clear indicator strips turn amber, not pale orange)
+    const light = (mats: THREE.MeshStandardMaterial[], on: number, k: number, litColor: number) => { for (const m of mats) { m.emissiveIntensity = on * k; if (on) m.color.setHex(litColor); else m.color.copy(m.userData.offColor); } };
+    if (brake !== s.brake) { s.brake = brake; light(this.lampMats.brake, brake, 2.4, 0x300000); }
+    if (left !== s.left) { s.left = left; light(this.lampMats.left, left ? 1 : 0, 2.6, 0x201000); }
+    if (right !== s.right) { s.right = right; light(this.lampMats.right, right ? 1 : 0, 2.6, 0x201000); }
+    if (reverse !== s.reverse) { s.reverse = reverse; if (this.reverseLamps) this.reverseLamps.visible = reverse; }
+  }
+  /** From the driver's seat the windows look nearly clear; from outside the tinted glass hides most of the cabin. */
+  setInterior(on: boolean) {
+    if (on === this.lampState.interior) return; this.lampState.interior = on;
+    for (const m of this.glassMats) { m.opacity = on ? 0.12 : GLASS_OUT; m.color.setHex(on ? 0x56625c : 0x1c2622); }
+  }
+
   private q1 = new THREE.Quaternion(); private q2 = new THREE.Quaternion();
   update(veh: Vehicle) {
+    if (this.shadowProxyMat) this.shadowProxyMat.visible = false; // in case last frame skipped the shadow pass
     this.root.position.set(veh.pos.x, veh.pos.y, veh.pos.z);
     this.root.quaternion.set(veh.q.x, veh.q.y, veh.q.z, veh.q.w);
     const sgnN = this.overrides.needleSign ?? -1;
@@ -166,6 +286,40 @@ export class CarVisual {
     if (this.needleTacho) { const d = this.needleTacho; this.q1.setFromAxisAngle(this.tachoAxis, sgnN * veh.rpm / 1000 * (this.overrides.tachoDegPer1000 ?? 40) * Math.PI / 180); d.node.quaternion.copy(this.q1).multiply(d.restQ); }
     if (this.needleSpeed) { const d = this.needleSpeed; this.q1.setFromAxisAngle(this.speedAxis, sgnN * veh.kmh / 20 * (this.overrides.speedDegPer20 ?? 13) * Math.PI / 180); d.node.quaternion.copy(this.q1).multiply(d.restQ); }
   }
+}
+
+const PAINT = 0x5b5f63;   // close to Toyota's "Grey Metallic"
+const GLASS_OUT = 0.5;    // window opacity seen from outside
+const REV_DROP = 0.022;   // reverse lamp centre below the indicator strip, m
+/** Fix the export's material values: non-metals at metalness 0, rubber matte, glass clear-ish, paint with depth. */
+function tuneMaterial(m: THREE.MeshStandardMaterial) {
+  const n = m.name;
+  if (!/^(chrome|chrome_int|chrome_only|material|carpaint|Material_20|indicator_arrow)$/.test(n)) m.metalness = 0;
+  m.envMapIntensity = /_int$|leather|egg|stitch|seat|plastic_1/.test(n) ? 0.3 : 1;
+  switch (n) {
+    case 'carpaint': {
+      const p = m as THREE.MeshPhysicalMaterial; p.color.setHex(PAINT); p.metalness = 0.45; p.roughness = 0.4;
+      if (p.isMeshPhysicalMaterial) { p.clearcoat = 1; p.clearcoatRoughness = 0.03; }
+      break;
+    }
+    case 'tire': case 'Material_18': m.roughness = 0.92; m.envMapIntensity = 0.35; break; // tread / sidewall rubber
+    case 'windows_glass': m.color.setHex(0x1c2622); m.roughness = 0.04; m.transparent = true; m.opacity = GLASS_OUT; m.depthWrite = false; m.envMapIntensity = 1.6; break;
+    case 'Material_8': case 'r_glass': case 'glass_decal': m.roughness = 0.05; m.depthWrite = false; break; // lamp lenses
+    case 'chrome_only': m.color.setHex(0x7c848c); m.roughness = 0.1; break; // door mirrors: tinted, slightly soft (no mirror render pass)
+    case 'plastic_egg': case 'leather_egg': m.color.multiplyScalar(0.78); m.roughness = 0.9; m.envMapIntensity = 0.22; break; // headliner, pillars
+    case 'r_tailight': case 'ind_tailighjt': m.roughness = 0.25; break;
+    case 'black': case 'Material_4': m.roughness = Math.max(m.roughness, 0.5); break;
+  }
+  if (m.transparent && m.side === THREE.DoubleSide) m.forceSinglePass = true; // one draw instead of back + front passes
+  m.needsUpdate = true;
+}
+
+/** Soft-edged white bar for the reverse lamps (bright core, blurred rim). */
+function lampGlowTexture() {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 32;
+  const g = c.getContext('2d')!; g.filter = 'blur(3px)'; g.fillStyle = '#fff';
+  g.beginPath(); g.roundRect(6, 6, 116, 20, 8); g.fill();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
 function isAncestor(a: THREE.Object3D, b: THREE.Object3D) { let p: THREE.Object3D | null = b; while (p) { if (p === a) return true; p = p.parent; } return false; }
@@ -250,4 +404,100 @@ function roundedBox(w: number, h: number, d: number, r: number) {
   s.moveTo(x + r, y); s.lineTo(x + d - r, y); s.quadraticCurveTo(x + d, y, x + d, y + r); s.lineTo(x + d, y + h - r); s.quadraticCurveTo(x + d, y + h, x + d - r, y + h); s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
   const g = new THREE.ExtrudeGeometry(s, { depth: w, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: 3 });
   g.translate(0, 0, -w / 2); return g; // shape spans X (width) × Y (height), extruded along Z (length)
+}
+
+/** Copy of a geometry with every attribute as plain Float32 (meshopt GLBs store quantised Int16/Int8 attributes,
+ *  which can't be transformed in place or merged with float ones). */
+function toFloat(g: THREE.BufferGeometry, only?: string[]) {
+  const out = new THREE.BufferGeometry();
+  const get = ['getX', 'getY', 'getZ', 'getW'] as const;
+  for (const [name, a] of Object.entries(g.attributes)) {
+    if (only && !only.includes(name)) continue;
+    const n = a.count, k = a.itemSize, arr = new Float32Array(n * k);
+    for (let i = 0; i < n; i++) for (let c = 0; c < k; c++) arr[i * k + c] = (a as any)[get[c]](i); // getX… de-normalise
+    out.setAttribute(name, new THREE.BufferAttribute(arr, k));
+  }
+  if (g.index) out.setIndex(new THREE.BufferAttribute(Uint32Array.from(g.index.array as ArrayLike<number>), 1));
+  return out;
+}
+
+/** Meshes the rig moves or hides; everything else on the model is static relative to the model root. */
+function bakeInto(root: THREE.Object3D, keep: Set<THREE.Object3D>) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const groups = new Map<string, { mat: THREE.Material; cast: boolean; recv: boolean; geos: THREE.BufferGeometry[]; meshes: THREE.Mesh[] }>();
+  root.traverse(o => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh || Array.isArray(m.material) || m.children.length || (m as any).isSkinnedMesh || (m as any).isInstancedMesh) return;
+    for (let p: THREE.Object3D | null = m; p && p !== root; p = p.parent) if (keep.has(p)) return;
+    const g = m.geometry;
+    if (Object.keys(g.morphAttributes).length) return;
+    const attrs = usedAttributes(m.material, g); // drop unused uv / colour so meshes of one material share a key
+    const key = [m.material.uuid, attrs.join(','), !!g.index, m.castShadow, m.receiveShadow].join('|');
+    let e = groups.get(key); if (!e) groups.set(key, e = { mat: m.material, cast: m.castShadow, recv: m.receiveShadow, geos: [], meshes: [] });
+    const mat = new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld);
+    const geo = toFloat(g, attrs).applyMatrix4(mat);
+    if (mat.determinant() < 0 && geo.index) { const a = geo.index.array; for (let i = 0; i < a.length; i += 3) { const t = a[i + 1]; a[i + 1] = a[i + 2]; a[i + 2] = t; } }
+    e.geos.push(geo); e.meshes.push(m);
+  });
+  let before = 0, after = 0;
+  for (const e of groups.values()) {
+    before += e.meshes.length;
+    if (e.meshes.length < 2) { after += e.meshes.length; continue; }
+    const geo = mergeGeometries(e.geos, false);
+    if (!geo) { after += e.meshes.length; continue; }
+    const mesh = new THREE.Mesh(geo, e.mat); mesh.castShadow = e.cast; mesh.receiveShadow = e.recv; mesh.name = 'merged_' + (e.mat.name || 'mat');
+    root.add(mesh); after++;
+    for (const m of e.meshes) { m.removeFromParent(); m.geometry.dispose(); }
+  }
+  return { before, after };
+}
+
+/** Attributes the material actually reads (sorted). */
+function usedAttributes(mat: THREE.Material, g: THREE.BufferGeometry) {
+  const m = mat as THREE.MeshPhysicalMaterial;
+  const mapped = !!(m.map || m.normalMap || m.roughnessMap || m.metalnessMap || m.aoMap || m.emissiveMap || m.alphaMap || m.bumpMap || m.lightMap || m.clearcoatNormalMap || m.clearcoatMap || m.specularIntensityMap || m.specularColorMap);
+  return Object.keys(g.attributes).filter(n => n === 'position' || n === 'normal' || (n === 'uv' && mapped) || (n === 'color' && m.vertexColors) || (n === 'tangent' && !!m.normalMap)).sort();
+}
+
+/** Replace every shadow-casting car part with one position-only mesh drawn only in the shadow pass. The wheels are
+ *  baked at rest (a tyre's shadow looks the same while it spins). Returns how many casters were folded in.
+ *  three tests the same camera layers in the main and the shadow pass, so "shadow only" works through the
+ *  material's visible flag: off while the main render list is built, switched on by a gate object that three
+ *  visits right after the proxy (it poses as an LOD, whose update() runs during list building), off again after
+ *  the proxy's shadow draw. */
+function buildShadowProxy(root: THREE.Object3D) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const geos: THREE.BufferGeometry[] = []; let n = 0;
+  root.traverse(o => {
+    const m = o as THREE.Mesh; if (!m.isMesh || !m.castShadow) return;
+    m.castShadow = false; n++;
+    const mat = new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld);
+    const g = toFloat(m.geometry, ['position']).applyMatrix4(mat);
+    if (!g.index) { const c = g.attributes.position.count, idx = new Uint32Array(c); for (let i = 0; i < c; i++) idx[i] = i; g.setIndex(new THREE.BufferAttribute(idx, 1)); }
+    else if (mat.determinant() < 0) { const a = g.index.array; for (let i = 0; i < a.length; i += 3) { const t = a[i + 1]; a[i + 1] = a[i + 2]; a[i + 2] = t; } }
+    geos.push(g);
+  });
+  if (!geos.length) return { n: 0, mat: null };
+  const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, visible: false });
+  const proxy = new THREE.Mesh(mergeGeometries(geos, false)!, mat);
+  proxy.name = 'Car_shadow_proxy'; proxy.castShadow = true; proxy.receiveShadow = false;
+  proxy.onAfterShadow = () => { mat.visible = false; };
+  const gate = new THREE.Object3D() as THREE.Object3D & { isLOD: boolean; autoUpdate: boolean; update(): void };
+  gate.name = 'Car_shadow_gate'; gate.isLOD = true; gate.autoUpdate = true; gate.update = () => { mat.visible = true; };
+  root.add(proxy, gate); // order matters: the gate must come after the proxy
+  for (const g of geos) g.dispose();
+  return { n, mat };
+}
+
+/** Only parts bigger than ~0.35 m radius cast a shadow. Bolts, badges and trim make no visible shadow but each
+ *  costs a draw call in the shadow pass (310 → 134 casters on the Sketchfab model; ~+10 fps on Iris Xe). */
+function limitShadowCasters(root: THREE.Object3D, minRadius = 0.35) {
+  root.updateMatrixWorld(true);
+  root.traverse(o => {
+    const m = o as THREE.Mesh; if (!m.isMesh || !m.geometry) return;
+    if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
+    m.castShadow = m.geometry.boundingSphere!.radius * m.matrixWorld.getMaxScaleOnAxis() > minRadius;
+  });
 }

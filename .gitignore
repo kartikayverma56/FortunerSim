@@ -4,3 +4,4 @@ dist
 assets_src/
 # bundled headless test builds
 tools/.*.mjs
+public/_listen/

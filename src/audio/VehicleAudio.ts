@@ -83,6 +83,7 @@ export class VehicleAudio implements VehicleAudioApi {
   private master!: GainNode; private comp!: DynamicsCompressorNode; private limiter!: DynamicsCompressorNode;
   private _analyser: AnalyserNode | null = null;
   private engineBus!: GainNode;
+  private fx: GainNode | null = null; // additive hook: bus for small cabin/vehicle sounds (horn, indicator tick)
   private lastGains: Float64Array = new Float64Array(12).fill(NaN);
 
   // samples
@@ -111,6 +112,8 @@ export class VehicleAudio implements VehicleAudioApi {
   /** rpm actually being synthesised (includes cranking, start flare, run-down and TC flare). */
   get audibleRpm(): number { return this.effRpm; }
   get samplesLoaded(): boolean { return this.samples !== null; }
+  /** Input for extra sounds (horn, indicator tick): goes through master volume / mute and the limiter. Null before start(). */
+  get fxBus(): AudioNode | null { return this.fx; }
 
   constructor() {
     WORKLET_PARAMS.forEach((p, i) => { this.paramIndex[p] = i; });
@@ -192,6 +195,7 @@ export class VehicleAudio implements VehicleAudioApi {
     this.limiter.threshold.value = -2; this.limiter.knee.value = 0; this.limiter.ratio.value = 20;
     this.limiter.attack.value = 0.001; this.limiter.release.value = 0.08;
     mix.connect(this.master).connect(this.comp).connect(this.limiter).connect(ctx.destination);
+    this.fx = g(1); this.fx.connect(this.master);
     this._analyser = ctx.createAnalyser();
     this._analyser.fftSize = 4096;
     this._analyser.smoothingTimeConstant = 0.7;
@@ -259,6 +263,9 @@ export class VehicleAudio implements VehicleAudioApi {
       try { json = JSON.parse(text); } catch { return false; } // e.g. dev-server HTML fallback
       const entries = parseManifest(json);
       if (entries.length === 0) return false;
+      // optional per-set tuning, e.g. { "loops": [...], "tuning": { "samplePitchClamp": 0.4 } }
+      const setTuning = (json as { tuning?: unknown })?.tuning;
+      if (setTuning && typeof setTuning === 'object' && !Array.isArray(setTuning)) this.setTuning(setTuning as Partial<Tuning>);
       // decode with the live context if we have one, otherwise an offline one (no autoplay issues)
       const decoder: BaseAudioContext = this.ctx ?? new OfflineAudioContext(1, 1, 48000);
       const decoded = await Promise.all(entries.map(async (e): Promise<DecodedLoop | null> => {

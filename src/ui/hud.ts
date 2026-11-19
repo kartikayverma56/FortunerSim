@@ -9,7 +9,7 @@ export class Hud {
   dial = $('dial') as HTMLCanvasElement; g = this.dial.getContext('2d')!;
   chart = $('chart') as HTMLCanvasElement; cg = this.chart.getContext('2d')!;
   gm = $('gmeter') as HTMLCanvasElement; gg = this.gm.getContext('2d')!;
-  hist: number[][] = []; showChart = true; private toastT = 0; private acc = 0;
+  hist: number[][] = []; showChart = false; private toastT = 0; private acc = 0;
 
   constructor(private tests: TestRunner) {
     const sel = $('humpSel') as HTMLSelectElement;
@@ -17,9 +17,18 @@ export class Hud {
     sel.onchange = () => { tests.humpId = sel.value; };
     const sp = $('humpSpeed') as HTMLInputElement; sp.oninput = () => { tests.humpSpeed = +sp.value; $('humpSpeedV').textContent = sp.value + ' km/h'; };
   }
+  /** HUD size: compact (small cluster bottom-right, telemetry panels behind F) → full (original layout) → off. */
+  static MODES = ['compact', 'full', 'off'] as const;
+  mode: typeof Hud.MODES[number] = 'compact';
+  cycleMode() {
+    this.mode = Hud.MODES[(Hud.MODES.indexOf(this.mode) + 1) % Hud.MODES.length];
+    for (const m of Hud.MODES) document.body.classList.toggle('hud-' + m, m === this.mode);
+    return this.mode;
+  }
   toast(msg: string, t = 2.5) { const el = $('toast'); el.textContent = msg; el.style.opacity = '1'; this.toastT = t; }
 
-  update(dt: number, veh: Vehicle, extra: { cam: string; fps: number; audioMode: string; car: CarVisual }) {
+  update(dt: number, veh: Vehicle, extra: { cam: string; fps: number; audioMode: string; car: CarVisual; gfx?: string; indL?: boolean; indR?: boolean }) {
+    $('l-indl').classList.toggle('lit', !!extra.indL); $('l-indr').classList.toggle('lit', !!extra.indR);
     if (this.toastT > 0) { this.toastT -= dt; if (this.toastT <= 0) $('toast').style.opacity = '0'; }
     this.acc += dt;
     // telemetry history (20 Hz)
@@ -34,7 +43,7 @@ export class Hud {
     this.drawG(veh);
   }
 
-  private drawPanels(veh: Vehicle, extra: { cam: string; fps: number; audioMode: string; car: CarVisual }) {
+  private drawPanels(veh: Vehicle, extra: { cam: string; fps: number; audioMode: string; car: CarVisual; gfx?: string }) {
     const w = veh.wheels;
     $('zone').textContent = zoneLabelAt(veh.pos.x, veh.pos.z);
     $('info').innerHTML = [
@@ -43,7 +52,7 @@ export class Hud {
       `Boost ${(veh.boost * 100).toFixed(0)} % · TC slip ${(veh.tcSlip * 100).toFixed(0)} % · Engine ${veh.engineTorque.toFixed(0)} N·m`,
       `Pitch ${(veh.pitch * 57.3).toFixed(1)}° · Roll ${(veh.roll * 57.3).toFixed(1)}° · Yaw ${(veh.yawRate * 57.3).toFixed(0)}°/s`,
       `Underbody clearance ${(veh.bellyMinClear * 1000).toFixed(0)} mm${veh.bellyScrape > 0 ? ' <b class="warn">SCRAPE</b>' : ''}`,
-      `Odometer ${(veh.odometer / 1000).toFixed(2)} km · Cam ${extra.cam} · Sound ${extra.audioMode} · ${extra.fps.toFixed(0)} fps`,
+      `Odometer ${(veh.odometer / 1000).toFixed(2)} km · Cam ${extra.cam} · Sound ${extra.audioMode} · ${extra.fps.toFixed(0)} fps${extra.gfx ? ' · Gfx ' + extra.gfx : ''}`,
     ].join('<br>');
     $('wheels').innerHTML = w.map(x => {
       const travel = x.travelFrac, slip = x.slip;

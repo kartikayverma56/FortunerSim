@@ -31,12 +31,62 @@ Press `H` in the app for the full list.
 | `5` – `9` | Teleport: runway, Indian road, speed breakers, off-road, handling pad |
 | `Backspace` | Recover / upright the car |
 | `T` | Standard tests: 0–100, 80–0 braking, speed breaker at chosen speed |
-| `F` | Telemetry chart |
+| `,` / `.` | Left / right indicator (cancels itself once the wheel comes back after the turn) |
+| `/` | Hazard lights |
+| `N` (hold) | Horn |
+| `F` | Telemetry: chart and wheel loads |
+| `U` | HUD size: compact (default) → full → off |
 | `I` | Rig inspector |
 | `M` | Mute |
 | `B` | Sound mode (synth / samples / hybrid) |
+| `Q` | Graphics: Auto → Low → Medium → High (saved; the car model and anti-aliasing change on reload) |
 
-Gamepad: RT/LT pedals, left stick steering, Y camera, X engine, LB/RB shift, B handbrake.
+Gamepad: RT/LT pedals, left stick steering, Y camera, X engine, LB/RB shift, B handbrake, D-pad left/right indicators, L3 horn.
+
+## Graphics quality and speed (`src/quality.ts`)
+
+- **Auto (default)** picks a level from the GPU: integrated graphics (Intel Iris Xe/UHD, AMD integrated) start at **Medium**, NVIDIA/Radeon RX at **High**, phones and software rendering at **Low**. If the frame rate stays under 40 fps for 3 s it steps down one level.
+- Force a level with `?q=low|medium|high` (old `?q=phone` = low, `?q=showroom` = high) or press `Q`.
+
+| Level | Car model | Resolution | Shadows | Trees |
+|---|---|---|---|---|
+| High | showroom (563 k tris), MSAA | up to 1.5× | soft, 2048 px, trees cast | all |
+| Medium | phone (204 k tris), MSAA | 1× | 1024 px, car only | all |
+| Low | phone, no MSAA | 0.8× | 1024 px, car only | half |
+
+**Speed fixes (2026-11-18, measured on Intel Iris Xe at 1536×960):**
+- The car's ~260 static meshes are merged per material at load (`mergeStatic` in `rig.ts`, 310 → 104 meshes). Only parts larger than 0.35 m radius cast shadows.
+- Together these took frame submission from 10.3 ms to 2.6 ms and draw calls from 580 to 157: Medium went from ~50 to a steady 60 fps.
+- Physics now catches up to 0.1 s per frame, so a slow frame no longer turns into slow motion above 10 fps.
+
+## Realism pass (2026-11-20)
+
+Items 1–4 of `research/REALISM_REVIEW.md`. None of them adds a render pass. The physics is unchanged (`tools/simtest.ts`, `humptest.ts` and `feeltest.ts` give identical output).
+
+- **Car materials** (`tuneMaterial` / `materialPass` in `src/vehicle/rig.ts`): plastics, leather and rubber set to metalness 0 (the export had them at 40–90 % metal); matte tyres; grey-metallic paint with a clear coat; tinted glass at 50 % opacity outside, near-clear from the driver's seat (no `transmission`); door mirrors as a tinted, slightly soft mirror (no mirror render); a dark interior mirror; the headliner no longer glows.
+- **Reflections with a ground** (`src/world/carLighting.ts`): the PMREM environment is rebuilt from the sky plus a grass disc, a road strip and a tree line, so the lower half of reflections is no longer bright haze. The hemisphere fill drops from 0.55 to 0.4. Built once at load.
+- **Shadows:** the sun's shadow box follows the car at ±12 m (±16 m on High) instead of ±30 m, i.e. 2.3 cm per texel instead of 5.9, snapped to whole texels so edges do not crawl, with a 60 m depth range so the bias is 2.4 cm instead of 12 cm. A soft contact shadow under the body and at each tyre (`src/vehicle/contactShadow.ts`, 2 draw calls) stops the car from floating.
+- **Lamps and plates:** brake lamps and the high-mount stop lamp light with the brake pedal (and DAC), reverse lamps in R, indicators and hazards blink at 90 per minute with a relay tick, and the indicator cancels itself after the turn. Indian HSRP plates front and rear (`src/vehicle/plate.ts`; white plate, black characters, blue IND strip; made-up number "MH 12 AB 1234") replace the model's "NEW FORTUNER" decals.
+- **Horn** on `N`: a synthesised twin-tone disc horn (≈415 + 500 Hz) through `VehicleAudio`'s new `fxBus` (follows mute and volume), muffled in the cockpit (`src/vehicle/signals.ts`).
+- **Camera feel** (`src/cameras.ts`): in the cockpit the head lags the body under acceleration and braking (≈3 cm at 0.8 g), bobs on the seat from the seat acceleration, glances into turns, and the eyes keep about half of quick roll and pitch level. A short 11–13 Hz frame shake follows big suspension impacts (chase, cockpit and bonnet). The chase camera follows on a spring instead of a lerp. The field of view widens slightly with speed (+6° chase, +4° cockpit/bonnet).
+- **Smaller HUD:** the dial cluster sits small at the bottom right so it no longer covers the car; the chart and wheel panels show with `F`; `U` switches compact / full (the old layout) / off.
+- **Fewer car draw calls** (`rig.ts`): every shadow-casting car part is folded into one position-only proxy that is drawn only in the shadow pass (146 casters → 1 draw), the wheels, steering wheel and needles are merged per material inside themselves, unused UV/colour attributes are dropped so more parts merge, and double-sided transparent parts draw in one pass. Car draws went from ~167 (121 main + 46 shadow) to ~83. Measured on Medium (Iris Xe, 1536×826) driving at teleports 5–9: 57.5–59.2 fps (vsync-capped, median frame 16.7–17.1 ms), GPU 12–13.6 ms per frame, 233–328 draw calls in total, of which ~240 are world meshes (terrain pieces and boards).
+- **Terrain LOD:** fine ground meshes are cut into ~60–100 m pieces (`src/world/terrainLod.ts`). Each piece shows its original grid within 100 m of the camera (250 m for the open field) and a coarser twin beyond, built from a subset of the same height samples (error under ~1.5 px at the switch distance). Skirts hide seams. Physics still reads `heightAt()`/`surfaceAt()` directly, so driving is unaffected. Ground triangles per frame drop from ~2.3 M to ~0.3–0.4 M.
+
+## Driving feel (India)
+
+- **Right-hand drive:** the cockpit camera sits behind the RHD wheel. The Indian road strip, speed-breaker tests and the runway spawn use the **left lane**.
+- **Pedal map (drive-by-wire):**
+  - The pedal requests a share of full-load torque, with a gentle tip-in curve (pedal^0.8) added on top of the idle governor. Turbo boost only caps that request.
+  - Full throttle is unchanged (0–100 still 10.7 s), but part throttle now pulls: 15 % pedal is about 11 km/h after 6 s, 30 % about 35 km/h.
+  - Creep in D is 7.6 km/h.
+- **Keyboard pedals press in progressively:**
+  - W reaches 50 % in 0.45 s and 100 % 0.9 s later; S reaches 50 % in 0.25 s and 100 % 0.6 s later.
+  - `Shift+W` holds 35 % for gentle city driving.
+- **Keyboard steering:**
+  - Hand-over-hand at parking speed: full lock in about 1.1 s. Inputs get smaller and slower at highway speed.
+  - Caster self-centring: the wheel barely returns at a standstill and returns quickly once above about 25 km/h.
+- `tools/feeltest.ts` prints creep, part-throttle response and the steering lock.
 
 ## What is simulated (`src/physics/vehicle.ts`)
 
@@ -77,6 +127,12 @@ To re-run the checks, rebuild with `./node_modules/.bin/esbuild tools/simtest.ts
   - tyre noise per surface, squeal, wind, suspension thumps, bump-stop clunks, underbody scrape and ABS buzz;
   - a cabin filter in cockpit view.
 - **Recorded loops (most realistic):** put CC0/CC-BY steady-rpm loops in `public/audio/engine/` with a `manifest.json` (format in `public/audio/engine/README.md`). They are crossfaded by rpm × load × interior/exterior. Candidate free recordings are listed in `research/SOUNDS.md`.
+- **Free recorded set (2026-11-18):** 7 off-load exterior loops from 775 to 4,317 rpm, cut from free Freesound diesel recordings: Renault Master 2.3 dCi idle and top end, Audi 2.0 TDI, Peugeot 1.5 BlueHDi holds.
+  - No free recording of the 1GD-FTV exists.
+  - Sources and licences: `public/audio/engine/CREDITS.md`.
+  - Rebuild with `python -I tools/audio/makeloops.py tools/audio/loops_free.json`. Inspect a recording's rpm with `tools/audio/rpmtrack.py`.
+  - The manifest's `tuning` sets a ±40 % pitch range, because the free holds are far apart.
+  - Hybrid mode is the default when the loops load. The synth adds turbo, whine, starter and road; press `B` to compare synth, samples and hybrid.
 - **Tuning by ear:** open http://127.0.0.1:5791/audio-test.html for the audio bench (sliders, rev sweep, auto 0–100, live tuning, "Copy tuning JSON").
 
 ## The Fortuner model (installed 2026-11-18)
@@ -113,8 +169,8 @@ To re-run the checks, rebuild with `./node_modules/.bin/esbuild tools/simtest.ts
 
 ```
 src/physics/   params.ts (tagged parameters), vehicle.ts (dynamics)
-src/world/     terrain.ts (analytic ground + IRC humps), worldMesh.ts (meshes, sky, scenery)
-src/vehicle/   rig.ts (GLB loader, rig mapping, stand-in)
+src/world/     terrain.ts (analytic ground + IRC humps), worldMesh.ts (meshes, sky, scenery), carLighting.ts (reflection env, sun-shadow box)
+src/vehicle/   rig.ts (GLB loader, rig mapping, materials, lamps, stand-in), plate.ts (HSRP plate), contactShadow.ts, signals.ts (indicators, horn)
 src/audio/     VehicleAudio.ts, engine-worklet.js, SampleLayer.ts, tuning.ts
 src/ui/        hud.ts, tests.ts
 research/      fortuner_params.json, SOUNDS.md, SOURCES.md

@@ -1,0 +1,92 @@
+{
+  "out_dir": "public/audio/engine",
+  "ref": "0772_off_ext",
+  "level_idle_db": -22,
+  "level_rise_db": 11,
+  "tuning": {
+    "samplePitchClamp": 0.4,
+    "sampleGain": 0.5,
+    "hybridSynthCore": 0.15,
+    "hybridDetail": 0.5,
+    "squealLevel": 1.8
+  },
+  "loops": [
+    {
+      "name": "0772_off_ext",
+      "src": "assets_src/audio_work/freesound_425845_renault-master-dci-start-idle-revs-stop.wav",
+      "t0": 38.0,
+      "t1": 70.5,
+      "rpm": 772,
+      "load": "off",
+      "position": "exterior",
+      "len": 2.0,
+      "credit": "\"Renault Master F3500 dCi135 Engine Start Up Idle Gas Pressing And Shut Down Mono.wav\" by Soundholder, https://freesound.org/s/425845/, CC BY 3.0"
+    },
+    {
+      "name": "1395_off_ext",
+      "src": "assets_src/audio_work/freesound_425397_audi-a4-tdi-onload-acceleration.wav",
+      "t0": 5.8,
+      "t1": 8.4,
+      "rpm": 1395,
+      "load": "off",
+      "position": "exterior",
+      "len": 1.5,
+      "credit": "\"audi a4 b8 20tdi update engine set1 idle acceleration early gear shifting mono.wav\" by Soundholder, https://freesound.org/s/425397/, CC BY 3.0"
+    },
+    {
+      "name": "1790_off_ext",
+      "src": "assets_src/audio_work/freesound_827860_bluehdi-rpm-holds-to-4000.wav",
+      "t0": 8.9,
+      "t1": 10.8,
+      "rpm": 1792,
+      "load": "off",
+      "position": "exterior",
+      "len": 1.2,
+      "credit": "\"bluehdi_rev_hold\" by Mihacappy, https://freesound.org/s/827860/, CC0"
+    },
+    {
+      "name": "2440_off_ext",
+      "src": "assets_src/audio_work/freesound_827860_bluehdi-rpm-holds-to-4000.wav",
+      "t0": 15.3,
+      "t1": 20.8,
+      "rpm": 2441,
+      "load": "off",
+      "position": "exterior",
+      "len": 2.0,
+      "credit": "\"bluehdi_rev_hold\" by Mihacappy, https://freesound.org/s/827860/, CC0"
+    },
+    {
+      "name": "3000_off_ext",
+      "src": "assets_src/audio_work/freesound_827860_bluehdi-rpm-holds-to-4000.wav",
+      "t0": 25.2,
+      "t1": 29.6,
+      "rpm": 2950,
+      "load": "off",
+      "position": "exterior",
+      "len": 1.5,
+      "credit": "\"bluehdi_rev_hold\" by Mihacappy, https://freesound.org/s/827860/, CC0"
+    },
+    {
+      "name": "3460_off_ext",
+      "src": "assets_src/audio_work/freesound_827860_bluehdi-rpm-holds-to-4000.wav",
+      "t0": 30.0,
+      "t1": 34.4,
+      "rpm": 3464,
+      "load": "off",
+      "position": "exterior",
+      "len": 1.5,
+      "credit": "\"bluehdi_rev_hold\" by Mihacappy, https://freesound.org/s/827860/, CC0"
+    },
+    {
+      "name": "4280_off_ext",
+      "src": "assets_src/audio_work/freesound_425846_renault-master-dci-rpm-ramp.wav",
+      "t0": 6.2,
+      "t1": 9.4,
+      "rpm": 4280,
+      "load": "off",
+      "position": "exterior",
+      "len": 1.2,
+      "credit": "\"Renault Master F3500 dCi135 Engine RPM Ramp 2 Mono.wav\" by Soundholder, https://freesound.org/s/425846/, CC BY 3.0"
+    }
+  ]
+}

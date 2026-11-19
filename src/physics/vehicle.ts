@@ -211,16 +211,19 @@ export class Vehicle {
     this.steerWheelAngle = dC * P.steerRatio.v;
 
     // ---- engine ----
-    let thr = inp.throttle;
+    // pedal map: gentle tip-in like a Toyota drive-by-wire map (15 % pedal ≈ 22 % torque request, full = full)
+    let thr = Math.pow(clamp(inp.throttle, 0, 1), 0.8);
     if (!this.ignition) thr = 0;
     const rpm = this.omegaE * 60 / (2 * Math.PI);
     // idle governor (adds fuel below ~idle when the driver is off throttle)
     const idleErr = (P.idleRpm.v - rpm) / 300;
     this.idleI = clamp(this.idleI + idleErr * dt * 0.8, -0.05, 0.25);
-    let fuel = this.ignition ? Math.max(thr, clamp(idleErr * 1.6 + 0.09 + this.idleI, 0, 0.7) * (rpm < P.idleRpm.v + 400 ? 1 : 0)) : 0;
+    // governor and pedal add (the governor holds idle under converter load; the pedal asks for torque on top of it)
+    const gov = clamp(idleErr * 1.6 + 0.09 + this.idleI, 0, 0.7) * (rpm < P.idleRpm.v + 400 ? 1 : 0);
+    let fuel = this.ignition ? Math.min(1, thr + gov * (1 - thr)) : 0;
     if (rpm > P.redlineRpm.v) fuel = 0;
-    if (this.shiftT > 0 && this.selector !== 'N') fuel *= 0.75; // torque reduction during shift
-    if (this.trcCut > 0) fuel *= 1 - this.trcCut;
+    const cut = (this.shiftT > 0 && this.selector !== 'N' ? 0.75 : 1) * (this.trcCut > 0 ? 1 - this.trcCut : 1); // shift torque reduction, A-TRC
+    fuel *= cut;
     const bTarget = fuel * this.spool(rpm);
     const tau = lerp(P.turboLagLow.v, P.turboLagHigh.v, sstep(1200, 3000, rpm));
     this.boost += (bTarget - this.boost) * Math.min(1, dt / tau);
@@ -228,7 +231,9 @@ export class Vehicle {
     const boostFrac = clamp(this.boost / Math.max(0.05, this.spool(rpm)), 0, 1);
     const tAvail = tFull * (na + (1 - na) * boostFrac);
     const tFric = this.frictionTorque(rpm);
-    this.engineTorque = this.ignition ? fuel * (tAvail + tFric) - tFric : -tFric;
+    // Drive-by-wire: the pedal (or idle governor) requests a share of full-load torque; boost only caps it (smoke limit).
+    // Full pedal gives exactly tAvail as before, so full-throttle calibration is unchanged; part pedal no longer gets scaled twice.
+    this.engineTorque = this.ignition ? Math.min(fuel * (tFull + tFric), (tAvail + tFric) * cut) - tFric : -tFric;
     // starter
     if (this.crankT > 0) { this.crankT -= dt; this.engineTorque = Math.max(this.engineTorque, 60 * (rpm < 280 ? 1 : 0)); if (this.crankT <= 0) this.ignition = true; }
 

@@ -1,6 +1,14 @@
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { heightAt, surfaceAt, WORLD, RUNWAY, IROAD, PAD, OFFROAD, humps, type SurfaceKey } from './terrain';
+import { buildLodTerrain, type LodSpec } from './terrainLod';
+
+// Distance LOD for the ground. Near pieces are the original grids; far twins keep a subset of the same
+// sample lines (error <= tol) and switch in no closer than near[0] metres from the camera.
+const LOD_BASE: LodSpec = { piece: 700, maxStep: [32, 32], tol: 0.3, near: [250, 500], normalStep: 8 };
+const LOD_RUNWAY: LodSpec = { piece: 300, maxStep: [4, 8], tol: 0.05, near: [100, 220], normalStep: 2 };
+const LOD_ROAD: LodSpec = { piece: 60, maxStep: [2, 2], tol: 0.08, near: [100, 220], normalStep: 1 };
+const LOD_OFFROAD: LodSpec = { piece: 72, maxStep: [2, 2], tol: 0.08, near: [100, 220], normalStep: 1 };
 
 // ---------------- procedural textures (CC0 by construction) ----------------
 function canvasTex(size: number, draw: (g: CanvasRenderingContext2D, s: number) => void, repeat = true) {
@@ -76,13 +84,20 @@ function isHumpPaint(x: number, z: number) {
   return false;
 }
 
-export interface WorldVisual { group: THREE.Group; sun: THREE.DirectionalLight; sky: Sky; updateShadow(target: THREE.Vector3): void }
+export interface WorldGraphics { shadowSize: number; treeShadows: boolean; treeFrac: number }
+export interface WorldVisual { group: THREE.Group; sun: THREE.DirectionalLight; sky: Sky; updateShadow(target: THREE.Vector3): void; setGraphics(g: WorldGraphics): void }
 
 export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer): WorldVisual {
   const group = new THREE.Group(); scene.add(group);
   const mats = makeMats();
   const mesh = (geo: THREE.BufferGeometry, order: string[], shadow = true) => { const mm = new THREE.Mesh(geo, order.map(s => (mats as any)[s] ?? mats.grass)); mm.receiveShadow = shadow; group.add(mm); return mm; };
 
+  // ---- ground: the fine grids are cut into LOD pieces (terrainLod.ts); far pieces drop sample lines only
+  // where the surface stays within tol, so the roads up close are the same meshes as before ----
+  const lodMats = (order: string[]) => order.map(s => (mats as any)[s] ?? mats.grass);
+  const lod = (xs: number[], zs: number[], spec: LodSpec, keep?: (x: number, z: number) => boolean, surfOf?: (x: number, z: number) => string) => {
+    for (const o of buildLodTerrain(xs, zs, spec, lodMats, keep, surfOf).objects) group.add(o);
+  };
   // ---- coarse base terrain (holes where detailed meshes go) ----
   const holes = [
     { x0: RUNWAY.x0 - 3, x1: RUNWAY.x1 + 3, z0: RUNWAY.z0 - 3, z1: RUNWAY.z1 + 3 },
@@ -92,19 +107,11 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer): W
     { x0: PAD.cx - PAD.r - 3, x1: PAD.cx + PAD.r + 3, z0: PAD.cz - PAD.r - 3, z1: PAD.cz + PAD.r + 3 },
   ];
   const inHole = (x: number, z: number) => holes.some(h => x > h.x0 && x < h.x1 && z > h.z0 && z < h.z1);
-  {
-    const xs = range(-1400, 1400, 8), zs = range(-900, 2300, 8);
-    const { geo, order } = buildGrid(xs, zs, (x, z) => !inHole(x, z), () => 'grass');
-    const m = mesh(geo, order);
-    (m.material as THREE.Material[]).forEach(mt => { mt.polygonOffset = true; mt.polygonOffsetFactor = 2; mt.polygonOffsetUnits = 2; });
-  }
+  lod(range(-1400, 1400, 8), range(-900, 2300, 8), LOD_BASE, (x, z) => !inHole(x, z), () => 'grass');
+  mats.grass.polygonOffset = true; mats.grass.polygonOffsetFactor = 2; mats.grass.polygonOffsetUnits = 2; // as before: base grass sits behind the detailed meshes
   const M = 12; // skirt margin blending detailed meshes into the base
   // ---- runway (flat) ----
-  {
-    const xs = mergeRanges([[RUNWAY.x0 - M, RUNWAY.x0, 2], [RUNWAY.x0, RUNWAY.x1, 1], [RUNWAY.x1, RUNWAY.x1 + M, 2]]);
-    const zs = range(RUNWAY.z0 - M, RUNWAY.z1 + M, 2);
-    const { geo, order } = buildGrid(xs, zs); mesh(geo, order);
-  }
+  lod(mergeRanges([[RUNWAY.x0 - M, RUNWAY.x0, 2], [RUNWAY.x0, RUNWAY.x1, 1], [RUNWAY.x1, RUNWAY.x1 + M, 2]]), range(RUNWAY.z0 - M, RUNWAY.z1 + M, 2), LOD_RUNWAY);
   // ---- connectors ----
   { const xs = range(4 - M, 113 + M, 1.5), zs = range(-23 - M, -5 + M, 1.5); const { geo, order } = buildGrid(xs, zs); mesh(geo, order); }
   // ---- handling pad ----
@@ -112,38 +119,33 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer): W
   // ---- Indian road: adaptive resolution along z per zone ----
   {
     const xFine = (fine: number) => mergeRanges([[IROAD.x0 - M, IROAD.x0, 1.5], [IROAD.x0, IROAD.x1, fine], [IROAD.x1, IROAD.x1 + M, 1.5]]);
-    const chunks: [number, number, number, number][] = []; // z0, z1, zStep, xStep
-    for (const zn of WORLD.zones) {
+    const surf = (x: number, z: number) => isHumpPaint(x, z) ? 'hump' : surfaceAt(x, z);
+    const zones = WORLD.zones;
+    zones.forEach((zn, k) => {
+      const z0 = k === 0 ? zn.z0 - M : zn.z0, z1 = k === zones.length - 1 ? zn.z1 + M : zn.z1;
       const xStep = zn.label.startsWith('Potholes') ? 0.1 : zn.label.startsWith('Broken') || zn.label.startsWith('Mud') || zn.label.startsWith('Loose') ? 0.18 : zn.label.startsWith('Cement') ? 0.5 : 1.0;
       const zStep = zn.label.startsWith('Potholes') ? 0.1 : zn.label.startsWith('Broken') || zn.label.startsWith('Mud') || zn.label.startsWith('Loose') ? 0.18 : zn.label.startsWith('Cement') ? 0.03 : 0.5;
       if (zn.label.startsWith('Speed')) {
-        // fine only across humps
-        let z = zn.z0;
+        // fine only across humps; one grid for the whole section (0.5 m across, as the humps had) so it splits into few pieces
+        const parts: [number, number, number][] = []; let z = z0;
         for (const h of humps.filter(h => h.z >= zn.z0 && h.z < zn.z1).sort((a, b) => a.z - b.z)) {
-          if (h.z - 0.5 > z) chunks.push([z, h.z - 0.5, 0.5, 1]);
-          chunks.push([h.z - 0.5, h.z + h.len + 0.5, h.id === 'RS' ? 0.02 : 0.04, 0.5]); z = h.z + h.len + 0.5;
+          if (h.z - 0.5 > z) parts.push([z, h.z - 0.5, 0.5]);
+          parts.push([h.z - 0.5, h.z + h.len + 0.5, h.id === 'RS' ? 0.02 : 0.04]); z = h.z + h.len + 0.5;
         }
-        if (z < zn.z1) chunks.push([z, zn.z1, 0.5, 1]);
-      } else chunks.push([zn.z0, zn.z1, zStep, xStep]);
-    }
-    chunks[0][0] -= M; chunks[chunks.length - 1][1] += M;
-    for (const [z0, z1, zs, xsS] of chunks) {
-      const { geo, order } = buildGrid(xFine(xsS), range(z0, z1, zs), undefined, (x, z) => isHumpPaint(x, z) ? 'hump' : surfaceAt(x, z));
-      mesh(geo, order);
-    }
+        if (z < z1) parts.push([z, z1, 0.5]);
+        lod(xFine(0.5), mergeRanges(parts), LOD_ROAD, undefined, surf);
+      } else lod(xFine(xStep), range(z0, z1, zStep), LOD_ROAD, undefined, surf);
+    });
   }
   // ---- off-road park ----
-  {
-    const xs = range(OFFROAD.x0 - M, OFFROAD.x1 + M, 0.5), zs = range(OFFROAD.z0 - M, OFFROAD.z1 + M, 0.5);
-    // split into strips to keep index buffers moderate
-    for (let k = 0; k < zs.length - 1; k += 120) { const sub = zs.slice(k, Math.min(zs.length, k + 121)); const { geo, order } = buildGrid(xs, sub); mesh(geo, order); }
-  }
+  lod(range(OFFROAD.x0 - M, OFFROAD.x1 + M, 0.5), range(OFFROAD.z0 - M, OFFROAD.z1 + M, 0.5), LOD_OFFROAD);
 
   // ---- markings, boards, cones ----
   const white = new THREE.MeshBasicMaterial({ color: 0xf2f2f2 });
   const yellow = new THREE.MeshBasicMaterial({ color: 0xf3c623 });
   const dashGeo = new THREE.PlaneGeometry(0.15, 3).rotateX(-Math.PI / 2);
-  const dashes = new THREE.InstancedMesh(dashGeo, white, 600); let di = 0; const tmp = new THREE.Object3D();
+  // own material: sharing one between instanced and plain meshes makes three.js swap shader programs every frame
+  const dashes = new THREE.InstancedMesh(dashGeo, white.clone(), 600); let di = 0; const tmp = new THREE.Object3D();
   for (let z = RUNWAY.z0 + 5; z < RUNWAY.z1 - 5 && di < 600; z += 9) { tmp.position.set(0, 0.006, z); tmp.updateMatrix(); dashes.setMatrixAt(di++, tmp.matrix); }
   for (let z = IROAD.z0 + 5; z < IROAD.z1 - 5 && di < 600; z += 9) { if (isHumpPaint(38, z) || isHumpPaint(38, z + 1.5) || isHumpPaint(38, z - 1.5)) continue; tmp.position.set(38, heightAt(38, z) + 0.01, z); tmp.updateMatrix(); dashes.setMatrixAt(di++, tmp.matrix); }
   dashes.count = di; group.add(dashes);
@@ -210,7 +212,12 @@ export function buildWorld(scene: THREE.Scene, renderer: THREE.WebGLRenderer): W
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
   scene.add(sun, sun.target);
   const updateShadow = (t: THREE.Vector3) => { sun.position.copy(t).addScaledVector(sunDir, 120); sun.target.position.copy(t); };
-  return { group, sun, sky, updateShadow };
+  const setGraphics = (g: WorldGraphics) => {
+    if (sun.shadow.mapSize.x !== g.shadowSize) { sun.shadow.mapSize.set(g.shadowSize, g.shadowSize); sun.shadow.map?.dispose(); (sun.shadow as { map: unknown }).map = null; }
+    trunks.castShadow = crowns.castShadow = lamps.castShadow = g.treeShadows;
+    trunks.count = crowns.count = Math.round(ti * g.treeFrac); // trees are placed at random, so the first N are an even thinning
+  };
+  return { group, sun, sky, updateShadow, setGraphics };
 }
 
 function mulberry(a: number) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
