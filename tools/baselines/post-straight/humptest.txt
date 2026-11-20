@@ -1,0 +1,6 @@
+SB-01 20 km/h Peak seat vertical=0.39 g | Max front compression=77 mm (bump travel 85) | Max rear compression=82 mm (bump travel 115) | Bump-stop contact=no | Wheel airborne=no | Min underbody clearance=158 mm
+SB-01 40 km/h Peak seat vertical=0.61 g | Max front compression=66 mm (bump travel 85) | Max rear compression=68 mm (bump travel 115) | Bump-stop contact=no | Wheel airborne=75 ms | Min underbody clearance=171 mm
+SB-08 30 km/h Peak seat vertical=0.40 g | Max front compression=74 mm (bump travel 85) | Max rear compression=80 mm (bump travel 115) | Bump-stop contact=no | Wheel airborne=no | Min underbody clearance=163 mm
+SB-39 30 km/h Peak seat vertical=0.72 g | Max front compression=70 mm (bump travel 85) | Max rear compression=77 mm (bump travel 115) | Bump-stop contact=no | Wheel airborne=149 ms | Min underbody clearance=164 mm
+SB-X1 25 km/h Peak seat vertical=1.09 g | Max front compression=99 mm (bump travel 85) | Max rear compression=114 mm (bump travel 115) | Bump-stop contact=YES | Wheel airborne=325 ms | Min underbody clearance=136 mm
+SB-X1 45 km/h Peak seat vertical=2.31 g | Max front compression=119 mm (bump travel 85) | Max rear compression=136 mm (bump travel 115) | Bump-stop contact=YES | Wheel airborne=162 ms | Min underbody clearance=116 mm

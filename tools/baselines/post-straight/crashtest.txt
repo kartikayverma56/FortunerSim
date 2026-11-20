@@ -1,0 +1,118 @@
+
+## Crash tests
+
+| Test | Expected | Result | Pass |
+|---|---|---|---|
+| Drop, wheels down 0.5 m | rest ≤ 3 s, ≤ 3 rebounds > 2 cm | rest 1.00 s, rebounds > 2 cm above rest: 1, highest 12.2 cm, rests on wheels (rolling 0.1 m/s) (CG 18 mm vs static) | PASS |
+| Drop, wheels down 1 m | rest ≤ 3 s, ≤ 3 rebounds > 2 cm | rest 1.27 s, rebounds > 2 cm above rest: 2, highest 20.4 cm, rests on wheels (rolling 1.1 m/s) (CG -10 mm vs static) | PASS |
+| Drop, roof down 0.5 m | rest on roof ≤ 2 s, rebound < 5 cm, crush 3–15 cm | rest 1.39 s after contact on roof, rebound 3.4 cm, roof crush 4.1 cm (rail 4.0, panel 4.1), crush energy 9.2 kJ | PASS |
+| Drop, corner with spin (1 m, 3 rad/s roll) | rest ≤ 6 s | rest 2.95 s on side, quarter turns 0, crush 19.8 cm | PASS |
+| Free tumble, integrator only (ω_body = (1, 6, 2), 10 s) | L within 0.1 %, E_rot within 0.5 % | new: |ΔL| 0.00 %, ΔE_rot 0.00 % · old Euler step: |ΔL| 0.72 %, ΔE_rot 1.60 % | PASS |
+| Free tumble, whole vehicle (suspension live), 10 s | report (body L is shared with the wheels) | body |ΔL| max 2.82 %; internal energy (rotation + springs) start 79.77 kJ, max rise 0.84 %, end |ω| 6.19 rad/s (start 6.40) | FAIL |
+| Sideways slide 54 km/h (15 m/s) on asphalt | no roll | max roll 8°, quarter turns 0, rest 4.1 s on wheels (rolling 1.6 m/s), slid 17.4 m | PASS |
+| Sideways slide 54 km/h (15 m/s) on grass | report | max roll 5°, quarter turns 0, rest 4.4 s on wheels (rolling 0.5 m/s), slid 20.5 m | report |
+| Sideways slide 54 km/h (15 m/s) on sand | trips (> 40 km/h) | max roll 180°, quarter turns 8, rest 6.2 s on wheels (rolling 0.4 m/s), slid 20.5 m | PASS |
+| Sideways slide 54 km/h (15 m/s) on mud | trips (> 40 km/h) | max roll 180°, quarter turns 8, rest 6.3 s on wheels (rolling 0.1 m/s), slid 22.9 m | PASS |
+| Sideways slide 72 km/h (20 m/s) on asphalt | no roll | max roll 7°, quarter turns 0, rest NaN s on wheels (rolling 3.0 m/s), slid 56.8 m | PASS |
+| Sideways slide 72 km/h (20 m/s) on grass | report | max roll 5°, quarter turns 0, rest 4.4 s on wheels (rolling 2.8 m/s), slid 38.3 m | report |
+| Sideways slide 72 km/h (20 m/s) on sand | trips (> 40 km/h) | max roll 180°, quarter turns 8, rest 5.3 s on side, slid 25.6 m | PASS |
+| Sideways slide 72 km/h (20 m/s) on mud | trips (> 40 km/h) | max roll 180°, quarter turns 16, rest 10.3 s on wheels (rolling 0.2 m/s), slid 44.5 m | PASS |
+| Sideways slide 90 km/h (25 m/s) on asphalt | no roll | max roll 7°, quarter turns 0, rest NaN s on wheels (rolling 5.8 m/s), slid 103.0 m | PASS |
+| Sideways slide 90 km/h (25 m/s) on grass | report | max roll 5°, quarter turns 0, rest 10.7 s on wheels (rolling 2.8 m/s), slid 78.2 m | report |
+| Sideways slide 90 km/h (25 m/s) on sand | trips (> 40 km/h) | max roll 180°, quarter turns 16, rest 10.2 s on wheels, slid 42.1 m | PASS |
+| Sideways slide 90 km/h (25 m/s) on mud | trips (> 40 km/h) | max roll 180°, quarter turns 28, rest 10.2 s on wheels (rolling 0.1 m/s), slid 59.0 m | PASS |
+| Kerb trip 150 mm, 10 km/h sideways | no roll | max roll 17°, quarter turns 0, rest 2.2 s on wheels, sidewall/rim crush 0 mm | PASS |
+| Kerb trip 150 mm, 25 km/h sideways | either (report) | max roll 117°, quarter turns 1, rest NaN s on side, sidewall/rim crush 0 mm | report |
+| Kerb trip 150 mm, 40 km/h sideways | ≥ 1 quarter turn | max roll 180°, quarter turns 4, rest 7.0 s on wheels, sidewall/rim crush 0 mm | PASS |
+| Ramp roll, one-side 0.6 m ramp (3.5 m long), 60 km/h | rolls, rest ≤ 15 s; mean decel vs 0.36–0.61 g | quarter turns 1 (full rolls 0), rest 4.5 s after the ramp on side, 41 m; mean decel 0.37 g (time) / 0.34 g (distance); airborne 0.06 s, peak CG 1.21 m; crush max 20.0 cm, roof 2.4 cm | PASS |
+| Ramp roll, one-side 0.6 m ramp (3.5 m long), 80 km/h | rolls, rest ≤ 15 s; mean decel vs 0.36–0.61 g | quarter turns 1 (full rolls 0), rest 5.9 s after the ramp on side, 67 m; mean decel 0.38 g (time) / 0.37 g (distance); airborne 0.60 s, peak CG 1.43 m; crush max 23.3 cm, roof 3.0 cm | PASS |
+| Ditch: sideways off the road into a 0.6 m ditch (grass), 30 km/h | report | quarter turns 3, rest 12.2 s on side, x 6.1 m | report |
+| Ditch: sideways off the road into a 0.6 m ditch (grass), 50 km/h | report | quarter turns 8, rest 4.7 s on wheels (rolling 0.2 m/s), x 13.7 m | report |
+| Handbrake spin, 90 km/h in M4, 2 s handbrake + full lock, then full throttle | engine keeps running; stops sliding back and drives off forwards | min rpm after 0.2 s: 467, stalled: no; backward motion ended at 3.97 s, 18 km/h forwards at 5.61 s | PASS |
+| Lock-up forced on at a dead stop (D, foot brake) | engine stalls | stalled after 0.03 s | PASS |
+| Crank → idle in P (first start) | stable idle (750 ± 60 rpm) within 1.5 s | idle at 1.08 s, then ≥ 694 rpm, at 3 s 765 rpm, stalled no | PASS |
+| Crank → idle in P (restart after stop) | stable idle (750 ± 60 rpm) within 1.5 s | idle at 1.08 s, then ≥ 694 rpm, at 3 s 765 rpm, stalled no | PASS |
+| Crank → idle in N (first start) | stable idle (750 ± 60 rpm) within 1.5 s | idle at 1.08 s, then ≥ 694 rpm, at 3 s 765 rpm, stalled no | PASS |
+| Crank → idle in N (restart after stop) | stable idle (750 ± 60 rpm) within 1.5 s | idle at 1.08 s, then ≥ 694 rpm, at 3 s 765 rpm, stalled no | PASS |
+| Panic stop 90–0 in D, then 2 s held | engine idles | running at 732 rpm | PASS |
+
+## Handbrake spin timeline (speed along the car, + = forwards; wheels FL / FR / RL / RR)
+
+| t s | input | v along car km/h | rpm | gear | lock-up | wheel surface speed ωR km/h | slip vs ground ωR − v km/h | sideslip ° |
+|---|---|---|---|---|---|---|---|---|
+| 0.0 | handbrake + full lock | 90.7 | 2568 | M4 | off | 92 / 92 / 92 / 92 | 1 / 1 / 2 / 2 | -0 |
+| 0.5 | handbrake + full lock | 78.9 | 703 | M4 | off | 60 / 30 / 0 / 0 | 2 / -38 / -76 / -81 | -10 |
+| 1.0 | handbrake + full lock | 55.1 | 696 | M4 | off | 28 / 27 / 0 / 0 | 2 / -11 / -53 / -58 | -34 |
+| 1.5 | handbrake + full lock | 24.5 | 707 | M2 | off | -6 / 7 / 0 / 0 | -1 / 1 / -21 / -28 | -63 |
+| 2.0 | handbrake + full lock | -11.7 | 734 | M1 | off | -30 / -22 / 0 / 0 | 1 / -0 / 16 / 8 | -106 |
+| 2.5 | full throttle, straight | -24.2 | 1819 | M1 | off | -28 / 0 / 27 / -7 | 0 / 21 / 55 / 14 | -148 |
+| 3.0 | full throttle, straight | -17.2 | 1595 | M1 | off | -19 / -30 / 12 / -1 | -0 / -14 / 31 / 14 | 177 |
+| 3.5 | full throttle, straight | -8.2 | 1491 | M1 | off | -8 / -10 / 10 / -9 | -0 / -1 / 18 / -1 | -179 |
+| 4.0 | full throttle, straight | -0.0 | 588 | M1 | off | -0 / 0 / -3 / -0 | -0 / 0 / -3 / -0 | -94 |
+| 4.5 | full throttle, straight | 1.2 | 710 | M1 | off | 1 / 1 / 1 / 2 | 0 / -0 / 0 / 0 | 9 |
+| 5.0 | full throttle, straight | 5.8 | 1674 | M1 | off | 6 / 6 / 6 / 6 | 0 / 0 / 1 / 1 | 0 |
+| 5.5 | full throttle, straight | 15.7 | 2480 | M1 | off | 16 / 16 / 17 / 18 | 0 / 0 / 2 / 2 | -0 |
+| 6.0 | full throttle, straight | 25.9 | 3184 | M1 | off | 26 / 26 / 28 / 29 | 0 / 0 / 3 / 3 | 0 |
+| 6.5 | full throttle, straight | 35.3 | 3755 | M1 | off | 36 / 36 / 38 / 37 | 0 / 0 / 2 / 2 | -0 |
+| 7.0 | full throttle, straight | 42.5 | 4301 | M1 | off | 43 / 43 / 44 / 44 | 0 / 0 / 2 / 2 | -0 |
+| 7.5 | full throttle, straight | 46.6 | 4604 | M1 | off | 47 / 47 / 47 / 47 | 1 / 1 / 1 / 1 | 0 |
+| 8.0 | full throttle, straight | 47.0 | 4611 | M1 | off | 48 / 48 / 47 / 47 | 1 / 1 / 1 / 1 | -0 |
+| 8.5 | full throttle, straight | 47.0 | 4616 | M1 | off | 48 / 48 / 47 / 47 | 1 / 1 / 1 / 1 | -0 |
+| 9.0 | full throttle, straight | 47.0 | 4616 | M1 | off | 48 / 48 / 47 / 47 | 1 / 1 / 1 / 1 | 0 |
+
+## Fishhook / J-turn: largest same-side two-wheel lift (mm), 2WL = both wheels ≥ 50 mm, (max roll)
+
+| Test | CG m | Fix A | 0.3 g angle → input | VSC | 56 km/h | 64 km/h | 72 km/h | 76 km/h | 80 km/h |
+|---|---|---|---|---|---|---|---|---|---|
+| fishhook | 0.74 | on | 21° → 138° | on | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) |
+| fishhook | 0.74 | on | 21° → 138° | off | 0 (5°) | 0 (5°) | 0 (5°) | 0 (6°) | 1 (6°) |
+| fishhook | 0.74 | OFF | 21° → 135° | on | 0 (4°) | 0 (4°) | 0 (4°) | 0 (4°) | 0 (4°) |
+| fishhook | 0.74 | OFF | 21° → 135° | off | 0 (4°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) |
+| fishhook | 0.72 | on | 21° → 138° | on | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) |
+| fishhook | 0.72 | on | 21° → 138° | off | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) |
+| fishhook | 0.80 | on | 21° → 137° | on | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) |
+| fishhook | 0.80 | on | 21° → 137° | off | 1000 2WL ROLL spin (121°) | 1000 2WL ROLL spin (123°) | 1000 2WL ROLL spin (180°) | 1000 2WL ROLL spin (180°) | 1000 2WL ROLL spin (180°) |
+
+| Test | CG m | Fix A | 0.3 g angle → input | VSC | 56 km/h | 64 km/h | 72 km/h | 80 km/h | 88 km/h | 97 km/h |
+|---|---|---|---|---|---|---|---|---|---|---|
+| jturn | 0.74 | on | 21° → 169° | on | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) |
+| jturn | 0.74 | on | 21° → 169° | off | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) |
+| jturn | 0.74 | OFF | 21° → 166° | on | 0 (4°) | 0 (4°) | 0 (4°) | 0 (4°) | 0 (4°) | 0 (4°) |
+| jturn | 0.74 | OFF | 21° → 166° | off | 0 (4°) | 0 (4°) | 0 (4°) | 0 (4°) | 0 (4°) | 0 (4°) |
+| jturn | 0.72 | on | 21° → 170° | on | 0 (4°) | 0 (4°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) |
+| jturn | 0.72 | on | 21° → 170° | off | 0 (4°) | 0 (4°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) |
+| jturn | 0.80 | on | 21° → 169° | on | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (5°) | 0 (6°) |
+| jturn | 0.80 | on | 21° → 169° | off | 1000 2WL ROLL spin (125°) | 1000 2WL ROLL spin (124°) | 1000 2WL ROLL spin (180°) | 1000 2WL ROLL spin (180°) | 1000 2WL ROLL spin (180°) | 1000 2WL ROLL spin (180°) |
+
+## Energy audit (engine off): largest rise above the running minimum
+
+| Test | E start kJ | max rise J | at t s | rise / start | ≤ 0.5 % |
+|---|---|---|---|---|---|
+| drop wheels-down 0.5 m | 26.8 | 100.1 | 0.47 | 0.37 % | PASS |
+| drop wheels-down 1 m | 37.7 | 117.1 | 0.55 | 0.31 % | PASS |
+| drop roof-down 0.5 m | 34.5 | 14.5 | 0.59 | 0.04 % | PASS |
+| drop corner + spin | 56.8 | 877.0 | 0.45 | 1.54 % | FAIL |
+| slide 54 km/h asphalt | 267.2 | 1436.3 | 2.12 | 0.54 % | FAIL |
+| slide 54 km/h grass | 267.2 | 617.8 | 2.89 | 0.23 % | PASS |
+| slide 54 km/h sand | 267.2 | 2945.8 | 1.19 | 1.10 % | FAIL |
+| slide 54 km/h mud | 267.2 | 3523.3 | 1.49 | 1.32 % | FAIL |
+| slide 72 km/h asphalt | 462.8 | 207.6 | 2.69 | 0.04 % | PASS |
+| slide 72 km/h grass | 462.8 | 0.0 | 0.00 | 0.00 % | PASS |
+| slide 72 km/h sand | 462.8 | 6203.2 | 1.14 | 1.34 % | FAIL |
+| slide 72 km/h mud | 462.8 | 12998.4 | 2.24 | 2.81 % | FAIL |
+| slide 90 km/h asphalt | 714.2 | 433.0 | 2.94 | 0.06 % | PASS |
+| slide 90 km/h grass | 714.2 | 137.5 | 4.08 | 0.02 % | PASS |
+| slide 90 km/h sand | 714.2 | 11177.1 | 3.23 | 1.56 % | FAIL |
+| slide 90 km/h mud | 714.2 | 26508.4 | 1.99 | 3.71 % | FAIL |
+| kerb trip 10 km/h | 24.4 | 673.0 | 0.17 | 2.76 % | FAIL |
+| kerb trip 25 km/h | 69.7 | 4940.5 | 0.10 | 7.09 % | FAIL |
+| kerb trip 40 km/h | 153.8 | 10733.4 | 0.04 | 6.98 % | FAIL |
+| ramp 60 km/h | 335.0 | 319.2 | 1.42 | 0.10 % | PASS |
+| ramp 80 km/h | 583.2 | 276.3 | 0.78 | 0.05 % | PASS |
+| ditch 30 km/h | 93.4 | 825.6 | 0.57 | 0.88 % | FAIL |
+| ditch 50 km/h | 231.4 | 6278.9 | 1.07 | 2.71 % | FAIL |
+| fishhook/J-turn (worst) | 703.9 | 15334.5 | NaN | 2.18 % | FAIL |
+
+Physics cost while the hull is in ground contact: median 38.2 µs/step, 90th pct 297.5 µs/step (886 chunks of 250 steps)
+
+total 44.0 s

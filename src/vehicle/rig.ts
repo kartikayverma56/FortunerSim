@@ -16,6 +16,13 @@ interface DrivenNode {
 }
 interface CornerRig { spin?: DrivenNode; steer?: DrivenNode; vert?: DrivenNode; caliper?: DrivenNode }
 
+/** interior, left (+X, passenger side on this RHD car), right (−X, driver side) */
+export type MirrorId = 'interior' | 'left' | 'right';
+/** Window glass panes split before the merge so they can shatter separately (damageVisual.ts). */
+export type GlassPane = 'front' | 'rear' | 'left' | 'right';
+/** Where a lamp material sits: side (left = +X) and end. */
+export interface LampSpot { side: 'left' | 'right' | 'centre' | 'both'; front: boolean }
+
 export interface RigReport { source: string; file?: string; nodes: string[]; mapped: Record<string, string>; warnings: string[]; credit?: string }
 
 export class CarVisual {
@@ -31,7 +38,16 @@ export class CarVisual {
   // lamps: emissive materials split per function / side before the draw-call merge (empty on the stand-in)
   lampMats = { brake: [] as THREE.MeshStandardMaterial[], left: [] as THREE.MeshStandardMaterial[], right: [] as THREE.MeshStandardMaterial[] };
   reverseLamps?: THREE.Mesh; plates?: THREE.Mesh;
+  /** Mirror glasses, each on its own material so the merge keeps it a separate mesh (src/render/mirrors.ts finds them
+   *  again by material). Empty on the stand-in. */
+  mirrorMats: Partial<Record<MirrorId, THREE.MeshStandardMaterial>> = {};
+  /** Rear window box in the body frame (for the interior mirror's cabin mask), if found. */
+  rearWindow?: THREE.Box3;
   private glassMats: THREE.MeshStandardMaterial[] = [];
+  /** Window glass by pane (empty on the stand-in). */
+  glassPane: Partial<Record<GlassPane, THREE.MeshStandardMaterial>> = {};
+  /** Lamp materials → position, and the ones smashed in a crash (they stay dark). */
+  lampSpot = new Map<THREE.Material, LampSpot>(); brokenLamps = new Set<THREE.Material>();
   private shadowProxyMat: THREE.Material | null = null;
   private lampState = { brake: -1, reverse: false, left: false, right: false, interior: false };
 
@@ -128,8 +144,8 @@ export class CarVisual {
     this.align.add(model); this.align.updateMatrixWorld(true);
     if (!wheelMid && hubs.FL && hubs.FR && hubs.RL && hubs.RR) { this.align.updateMatrixWorld(true); wheelMid = wp(hubs.FL).add(wp(hubs.FR)).add(wp(hubs.RL)).add(wp(hubs.RR)).multiplyScalar(0.25); this.align.worldToLocal(wheelMid); wheelMid.applyQuaternion(qAlign); }
     else if (wheelMid) { wheelMid.applyQuaternion(qAlign); }
-    // position: wheel-centre midpoint → body-frame point (0, yW, (a−b)/2)
-    const target = new THREE.Vector3(0, veh.wheels[0].mount.y, (veh.a - veh.b) / 2);
+    // position: wheel-centre midpoint → body-frame point (centreline −xcg, yW, (a−b)/2)
+    const target = new THREE.Vector3(-veh.xcg, veh.wheels[0].mount.y, (veh.a - veh.b) / 2);
     // if the model's tyres are smaller than the simulated ones, drop the body so the tyres still touch the road
     if (hubs.FL) { this.align.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(hubs.FL); const rModel = (bb.max.y - bb.min.y) / 2; const rSim = veh.R - (veh.mTot * 9.81 / 4) / veh.P.tyreVerticalStiffness.v; if (rModel > 0.2 && rModel < 0.6) { target.y -= rSim - rModel; this.report.warnings.push(`Model tyre radius ${(rModel * 1000).toFixed(0)} mm vs simulated ${(rSim * 1000).toFixed(0)} mm (loaded); body lowered to keep contact`); } }
     if (wheelMid) this.align.position.copy(target).sub(wheelMid);
@@ -179,16 +195,50 @@ export class CarVisual {
     const meshes: THREE.Mesh[] = []; model.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh && !Array.isArray(m.material)) meshes.push(m); });
     const tuned = new Set<THREE.Material>(); const box = new THREE.Box3(), c = new THREE.Vector3();
     model.updateMatrixWorld(true);
+    // mirror glass: rigmap.json may name the meshes ("mirror_interior" / "mirror_left" / "mirror_right": a mesh or
+    // node name, or a list of them); otherwise the chrome_only glasses are found by position and shape
+    const ov = this.overrides || {};
+    const named = (id: MirrorId, mesh: THREE.Mesh) => { const v = ov['mirror_' + id]; if (!v) return false; const list: string[] = Array.isArray(v) ? v : [v]; return list.includes(mesh.name) || (!!mesh.parent && list.includes(mesh.parent.name)); };
+    const hasOv = (['interior', 'left', 'right'] as MirrorId[]).some(id => ov['mirror_' + id]);
+    const mirrorMat = (m: THREE.MeshStandardMaterial, id: MirrorId, cabin: boolean) => variant(m, 'mirror_' + id, v => { if (cabin) cabinMirror(v); this.mirrorMats[id] = v; });
+    const cabinMirror = (v: THREE.MeshStandardMaterial) => { v.color.setHex(0x2b3036); v.roughness = 0.3; v.envMapIntensity = 0.45; };
     for (const mesh of meshes) {
       const m = mesh.material as THREE.MeshStandardMaterial; if (!('metalness' in m)) continue;
       if (!tuned.has(m)) { tuned.add(m); tuneMaterial(m); if (m.name === 'windows_glass') this.glassMats.push(m); }
       box.setFromObject(mesh).getCenter(c);
       const n = m.name;
-      if (n === 'r_tailight' && c.z < zRear - 0.4) mesh.material = variant(m, 'brake', v => this.lampMats.brake.push(lamp(v, 0xff0000)));
-      else if (n === 'r_glass' && c.y > yWheel + 1.0) mesh.material = variant(m, 'hmsl', v => this.lampMats.brake.push(lamp(v, 0xff0000))); // high-mount stop lamp
-      else if (n === 'ind_tailighjt' || n === 'indicator_signal') { const side = c.x > 0 ? 'left' : 'right'; mesh.material = variant(m, side, v => this.lampMats[side].push(lamp(v, 0xff6a00))); }
-      else if (n === 'chrome_only' && Math.abs(c.x) < 0.4 && c.y > yWheel + 0.95) mesh.material = variant(m, 'cabin', v => { v.color.setHex(0x2b3036); v.roughness = 0.3; v.envMapIntensity = 0.45; }); // interior mirror
+      if (hasOv) { const id = (['interior', 'left', 'right'] as MirrorId[]).find(i => named(i, mesh)); if (id) { mesh.material = mirrorMat(m, id, id === 'interior'); this.report.mapped['mirror_' + id] = mesh.name + ' (rigmap.json)'; continue; } }
+      if (n === 'windows_glass' && c.z < zRear - 0.5) { const b = new THREE.Box3().setFromObject(mesh); if (b.max.x - b.min.x > 0.8) (this.rearWindow ??= new THREE.Box3()).union(b); }
+      if (n === 'windows_glass') { // split by pane (wide panes are the windscreen / rear window; the rest go by side)
+        const b = new THREE.Box3().setFromObject(mesh), wide = b.max.x - b.min.x > 0.9;
+        const pane: GlassPane = wide ? (c.z > 0 ? 'front' : 'rear') : c.x > 0 ? 'left' : 'right';
+        mesh.material = variant(m, 'glass_' + pane, v => { this.glassPane[pane] = v; this.glassMats.push(v); });
+        continue;
+      }
+      const sideOf = (): 'left' | 'right' => c.x > 0 ? 'left' : 'right';
+      // a lamp mesh that spans both sides (one tail-lamp mesh on this model) breaks with either rear corner
+      const spans = () => { const bb = new THREE.Box3().setFromObject(mesh); return bb.min.x < -0.3 && bb.max.x > 0.3; };
+      if (n === 'r_tailight' && c.z < zRear - 0.4) { const side = spans() ? 'both' : sideOf(); mesh.material = variant(m, 'brake_' + side, v => { this.lampMats.brake.push(lamp(v, 0xff0000)); this.lampSpot.set(v, { side, front: false }); }); }
+      else if (n === 'r_glass' && c.y > yWheel + 1.0) mesh.material = variant(m, 'hmsl', v => { this.lampMats.brake.push(lamp(v, 0xff0000)); this.lampSpot.set(v, { side: 'centre', front: false }); }); // high-mount stop lamp
+      else if (n === 'ind_tailighjt' || n === 'indicator_signal') { const side = sideOf(), front = c.z > 0; mesh.material = variant(m, side + (front ? '_f' : '_r'), v => { this.lampMats[side].push(lamp(v, 0xff6a00)); this.lampSpot.set(v, { side, front }); }); }
+      else if (n === 'chrome_only' && Math.abs(c.x) < 0.4 && c.y > yWheel + 0.95) { // interior mirror area
+        // the glass is the flat, rear-facing part; the rest (housing, roof console) keeps the dark cabin finish
+        const glass = !hasOv && facing(mesh) > 0.6;
+        mesh.material = glass ? mirrorMat(m, 'interior', true) : variant(m, 'cabin', cabinMirror);
+        if (glass) this.report.mapped.mirror_interior = mesh.name;
+      } else if (n === 'chrome_only' && !hasOv && Math.abs(c.x) > 0.88) { // door mirror glass
+        const id: MirrorId = c.x > 0 ? 'left' : 'right';
+        mesh.material = mirrorMat(m, id, false); this.report.mapped['mirror_' + id] = mesh.name;
+      }
     }
+  }
+
+  /** Meshes now carrying the mirror materials (call after load; the merge may have replaced the original meshes). */
+  mirrorMeshes() {
+    const out: { id: MirrorId; mesh: THREE.Mesh }[] = [];
+    const byMat = new Map<THREE.Material, MirrorId>(); for (const [id, m] of Object.entries(this.mirrorMats)) byMat.set(m!, id as MirrorId);
+    this.root.traverse(o => { const m = o as THREE.Mesh; const id = m.isMesh && byMat.get(m.material as THREE.Material); if (id) out.push({ id, mesh: m }); });
+    return out;
   }
 
   /** HSRP plates over the model's own plate decals, and white reverse lamps on the inner (tailgate) tail-lamp sections. */
@@ -241,14 +291,24 @@ export class CarVisual {
   }
 
   /** Brake 0..1, reverse, left/right indicator lamp state (only touches materials when something changes). */
+  private forceLamps = false;
   setLamps(brake: number, reverse: boolean, left: boolean, right: boolean) {
     const s = this.lampState; brake = Math.round(brake * 20) / 20;
+    if (this.forceLamps) { this.forceLamps = false; s.left = !left; s.right = !right; s.reverse = !reverse; }
     // lit: the lens colour gives way to the LED colour (clear indicator strips turn amber, not pale orange)
-    const light = (mats: THREE.MeshStandardMaterial[], on: number, k: number, litColor: number) => { for (const m of mats) { m.emissiveIntensity = on * k; if (on) m.color.setHex(litColor); else m.color.copy(m.userData.offColor); } };
+    const light = (mats: THREE.MeshStandardMaterial[], on: number, k: number, litColor: number) => { for (const m of mats) { if (this.brokenLamps.has(m)) continue; m.emissiveIntensity = on * k; if (on) m.color.setHex(litColor); else m.color.copy(m.userData.offColor); } };
     if (brake !== s.brake) { s.brake = brake; light(this.lampMats.brake, brake, 2.4, 0x300000); }
     if (left !== s.left) { s.left = left; light(this.lampMats.left, left ? 1 : 0, 2.6, 0x201000); }
     if (right !== s.right) { s.right = right; light(this.lampMats.right, right ? 1 : 0, 2.6, 0x201000); }
-    if (reverse !== s.reverse) { s.reverse = reverse; if (this.reverseLamps) this.reverseLamps.visible = reverse; }
+    if (reverse !== s.reverse) { s.reverse = reverse; if (this.reverseLamps) this.reverseLamps.visible = reverse && !this.reverseBroken; }
+  }
+  reverseBroken = false;
+  /** Smashes (dark, cracked lens) or restores a lamp material. */
+  breakLamp(m: THREE.MeshStandardMaterial, broken: boolean) {
+    if (broken === this.brokenLamps.has(m)) return;
+    if (broken) { this.brokenLamps.add(m); m.emissiveIntensity = 0; m.color.copy(m.userData.offColor).multiplyScalar(0.35); m.roughness = 0.7; }
+    else { this.brokenLamps.delete(m); m.color.copy(m.userData.offColor); m.roughness = 0.25; }
+    this.lampState.brake = -1; this.forceLamps = true; // refresh on the next setLamps
   }
   /** From the driver's seat the windows look nearly clear; from outside the tinted glass hides most of the cabin. */
   setInterior(on: boolean) {
@@ -305,7 +365,7 @@ function tuneMaterial(m: THREE.MeshStandardMaterial) {
     case 'tire': case 'Material_18': m.roughness = 0.92; m.envMapIntensity = 0.35; break; // tread / sidewall rubber
     case 'windows_glass': m.color.setHex(0x1c2622); m.roughness = 0.04; m.transparent = true; m.opacity = GLASS_OUT; m.depthWrite = false; m.envMapIntensity = 1.6; break;
     case 'Material_8': case 'r_glass': case 'glass_decal': m.roughness = 0.05; m.depthWrite = false; break; // lamp lenses
-    case 'chrome_only': m.color.setHex(0x7c848c); m.roughness = 0.1; break; // door mirrors: tinted, slightly soft (no mirror render pass)
+    case 'chrome_only': m.color.setHex(0x7c848c); m.roughness = 0.1; break; // door mirrors on Low: tinted, slightly soft (Medium / High: live, src/render/mirrors.ts)
     case 'plastic_egg': case 'leather_egg': m.color.multiplyScalar(0.78); m.roughness = 0.9; m.envMapIntensity = 0.22; break; // headliner, pillars
     case 'r_tailight': case 'ind_tailighjt': m.roughness = 0.25; break;
     case 'black': case 'Material_4': m.roughness = Math.max(m.roughness, 0.5); break;
@@ -320,6 +380,19 @@ function lampGlowTexture() {
   const g = c.getContext('2d')!; g.filter = 'blur(3px)'; g.fillStyle = '#fff';
   g.beginPath(); g.roundRect(6, 6, 116, 20, 8); g.fill();
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+/** How flat and fore/aft-facing a mesh is: |Σ area·n_z| / Σ area in the body frame (1 = flat panel facing ±Z). */
+function facing(mesh: THREE.Mesh) {
+  const g = mesh.geometry, p = g.attributes.position, idx = g.index; if (!p) return 0;
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), s = new THREE.Vector3();
+  let sz = 0, area = 0; const n = idx ? idx.count : p.count;
+  for (let i = 0; i + 2 < n; i += 3) {
+    const i0 = idx ? idx.getX(i) : i, i1 = idx ? idx.getX(i + 1) : i + 1, i2 = idx ? idx.getX(i + 2) : i + 2;
+    a.fromBufferAttribute(p, i0).applyMatrix4(mesh.matrixWorld); b.fromBufferAttribute(p, i1).applyMatrix4(mesh.matrixWorld); c.fromBufferAttribute(p, i2).applyMatrix4(mesh.matrixWorld);
+    s.crossVectors(b.sub(a), c.sub(a)); sz += s.z; area += s.length();
+  }
+  return area > 0 ? Math.abs(sz) / area : 0;
 }
 
 function isAncestor(a: THREE.Object3D, b: THREE.Object3D) { let p: THREE.Object3D | null = b; while (p) { if (p === a) return true; p = p.parent; } return false; }

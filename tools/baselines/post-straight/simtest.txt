@@ -1,0 +1,27 @@
+settle: y 0.742 pitch 0.05 roll 0.00 Fz 5771,5771,5189,5189 s 1.9,1.9,2.3,2.3 rpm 740
+ t=0.0 v=0.1 g=1 rpm=743 slip=1.00 boost=0.05 Te=132 pitch=0.05 lock=false
+ t=1.0 v=16.1 g=1 rpm=2496 slip=0.31 boost=0.77 Te=377 pitch=-1.60 lock=false
+ t=2.0 v=35.1 g=1 rpm=3572 slip=0.02 boost=0.87 Te=256 pitch=-1.30 lock=false
+ t=3.0 v=44.0 g=2 rpm=3123 slip=0.18 boost=0.92 Te=439 pitch=-1.09 lock=false
+ t=4.0 v=55.9 g=2 rpm=3534 slip=0.08 boost=1.00 Te=401 pitch=-0.96 lock=false
+ t=5.0 v=64.6 g=3 rpm=3201 slip=0.17 boost=0.97 Te=441 pitch=-0.78 lock=false
+ t=6.0 v=73.0 g=3 rpm=3392 slip=0.11 boost=1.00 Te=422 pitch=-0.73 lock=false
+ t=7.0 v=80.8 g=3 rpm=3582 slip=0.07 boost=1.00 Te=393 pitch=-0.67 lock=false
+ t=8.0 v=85.8 g=3 rpm=3569 slip=0.02 boost=0.76 Te=237 pitch=-0.07 lock=false
+ t=9.0 v=90.9 g=4 rpm=3142 slip=0.20 boost=0.99 Te=455 pitch=-0.56 lock=false
+ t=10.0 v=96.5 g=4 rpm=3214 slip=0.17 boost=1.00 Te=446 pitch=-0.53 lock=false
+0-x 20:1.19s g1 2772rpm | 40:2.65s g2 3296rpm | 60:4.41s g2 3549rpm | 80:6.89s g3 3561rpm | 100:10.65s g4 3259rpm dist 188.5
+100-0: dist 46.0 m time 3.24 dive 3.86 deg abs used
+corner t=10.0 v=60.6 steer=0.04 ay=0.14g roll=0.62° yaw=0.102 vsc=false Fz=4659,6359,4631,5773
+corner t=12.5 v=59.7 steer=0.09 ay=0.29g roll=1.44° yaw=0.169 vsc=false Fz=2325,6276,3036,5221
+corner t=15.0 v=59.3 steer=0.14 ay=0.46g roll=1.05° yaw=0.248 vsc=false Fz=1847,8505,3729,7229
+corner t=17.5 v=59.3 steer=0.19 ay=0.48g roll=1.31° yaw=0.273 vsc=false Fz=2546,9363,3151,7202
+corner t=20.0 v=59.2 steer=0.24 ay=0.56g roll=2.03° yaw=0.303 vsc=false Fz=2575,9735,3726,8423
+corner t=22.5 v=59.1 steer=0.29 ay=0.48g roll=2.11° yaw=0.266 vsc=false Fz=2310,8909,3397,7275
+corner t=25.0 v=58.9 steer=0.34 ay=0.54g roll=2.70° yaw=0.284 vsc=false Fz=2140,9401,3935,8582
+corner t=27.5 v=56.5 steer=0.39 ay=0.80g roll=4.36° yaw=0.418 vsc=false Fz=0,10036,1560,9449
+corner t=30.0 v=59.1 steer=0.44 ay=0.77g roll=3.83° yaw=0.369 vsc=false Fz=86,10869,2080,8762
+corner t=32.5 v=58.6 steer=0.49 ay=0.48g roll=2.12° yaw=0.246 vsc=true Fz=2968,9392,2864,6928
+corner t=35.0 v=55.8 steer=0.50 ay=0.49g roll=1.41° yaw=0.252 vsc=true Fz=2500,9072,3469,7932
+corner t=37.5 v=49.5 steer=0.50 ay=0.41g roll=1.04° yaw=0.314 vsc=true Fz=2534,7707,2463,6248
+corner t=40.0 v=43.6 steer=0.50 ay=0.47g roll=1.59° yaw=0.370 vsc=true Fz=2677,8806,2755,7065

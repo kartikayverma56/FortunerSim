@@ -208,6 +208,16 @@ class FortunerEngineProcessor extends AudioWorkletProcessor {
         }
         break;
       }
+      case 'bodyImpact': { // body crash: low structural thud + sheet-metal crunch, coloured by what was hit
+        const e = Math.max(0, d.e || 0), lvl = this.T.impactLevel;
+        const a = Math.min(1.6, 0.25 + 0.42 * Math.log10(1 + e / 400)); // 0.4 kJ (bump) … 300 kJ (pole at 50 km/h)
+        const m = d.m || 'ground';
+        const ring = m === 'steel' ? 1 : m === 'concrete' || m === 'masonry' ? 0.55 : m === 'wood' ? 0.35 : m === 'ground' ? 0.3 : 0.2;
+        this.voice(42 * (0.9 + 0.2 * this.rand()), 0.9 * a * lvl, 0.16, 0.6,
+          (m === 'steel' ? 720 : 380) * (0.85 + 0.3 * this.rand()), 0.35 * a * ring * lvl, 0.06 + 0.12 * ring, 0.9 * a * lvl, 0.55 * a * lvl, 0.05 + 0.04 * a);
+        if (a > 0.6) this.voice(1900 + 900 * this.rand(), 0.18 * a * lvl, 0.03, 0.7, 3200 + 900 * this.rand(), 0.12 * a * lvl, 0.05, 0.4 * a * lvl, 0.7 * a * lvl, 0.09); // glass / plastic shards
+        break;
+      }
       case 'starter-on':
         this.voice(170, 0.25, 0.03, 0.9, 2300 + 300 * this.rand(), 0.12, 0.02, 0.15, 0.25, 0.006);
         break;

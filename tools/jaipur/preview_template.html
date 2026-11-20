@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jaipur Pink City Preview</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #bcd3e8; font: 14px system-ui, sans-serif; }
+  #ui { position: fixed; left: 12px; top: 12px; max-width: 360px; background: rgba(20,20,24,.82); color: #eee; padding: 12px 14px; border-radius: 10px; }
+  #ui h1 { font-size: 16px; margin: 0 0 6px; }
+  #ui p { margin: 4px 0; color: #ccc; line-height: 1.35; }
+  #ui button { margin: 6px 6px 0 0; padding: 7px 11px; border: 0; border-radius: 7px; background: #e0896f; color: #111; font-weight: 600; cursor: pointer; }
+  #ui button.alt { background: #d8d8d8; }
+  #stats { font-variant-numeric: tabular-nums; }
+  #credit { position: fixed; right: 10px; bottom: 8px; color: #222; background: rgba(255,255,255,.75); padding: 3px 8px; border-radius: 6px; font-size: 12px; }
+  #label { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); background: rgba(20,20,24,.75); color: #fff; padding: 6px 12px; border-radius: 16px; display: none; }
+  @media (max-width: 600px) { #ui { max-width: calc(100vw - 48px); } }
+</style>
+</head>
+<body>
+<div id="ui">
+  <h1>Jaipur — Pink City (preview)</h1>
+  <p>Badi Chaupar · Johari Bazar · City Palace area, ~1.4 × 1.5 km, built from real OpenStreetMap roads and building footprints.</p>
+  <p id="stats"></p>
+  <button id="tour">▶ Drive Johari Bazar</button><button id="bird" class="alt">Bird's eye</button><button id="fills" class="alt">Show filled-in shops</button>
+  <p style="font-size:12px">Drag to orbit · scroll to zoom · right-drag to pan. Shop rows with no building in OpenStreetMap are filled in (toggle to highlight).</p>
+</div>
+<div id="label"></div>
+<div id="credit">Map data © OpenStreetMap contributors (ODbL)</div>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const DATA = /*__DATA__*/null;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xbcd3e8);
+scene.fog = new THREE.Fog(0xc9d8e6, 250, 1400);
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.3, 4000);
+camera.position.set(260, 220, 340);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 150); controls.maxPolarAngle = Math.PI * 0.495; controls.enableDamping = true;
+
+scene.add(new THREE.HemisphereLight(0xdfeaff, 0x8a6a50, 0.9));
+const sun = new THREE.DirectionalLight(0xffe6c8, 2.2);
+sun.position.set(-180, 260, 120); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -450, right: 450, top: 450, bottom: -450, near: 10, far: 900 });
+sun.shadow.bias = -0.0005; scene.add(sun, sun.target);
+
+// ---------- textures (procedural, Pink City style) ----------
+function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
+const PINK = '#e3a083', PINK_D = '#cf8a6d', CREAM = '#f3e3c9', WHITE = '#fbf3e6';
+function arch(g, x, y, w, h) { g.beginPath(); g.moveTo(x, y + h); g.lineTo(x, y + w / 2); g.arc(x + w / 2, y + w / 2, w / 2, Math.PI, 0); g.lineTo(x + w, y + h); g.closePath(); }
+const upperTex = canvasTex(256, 256, (g, W, H) => {   // one 3.3 m bay of an upper floor
+  g.fillStyle = PINK; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${120 + Math.random() * 60},60,40,${Math.random() * 0.06})`; g.fillRect(Math.random() * W, Math.random() * H, 3, 3); }
+  g.strokeStyle = WHITE; g.lineWidth = 6; g.fillStyle = '#4a2f2a';
+  arch(g, 78, 70, 100, 140); g.fill(); g.stroke();                      // arched window
+  g.strokeStyle = WHITE; g.lineWidth = 3; arch(g, 64, 56, 128, 168); g.stroke(); // white outline motif
+  g.fillStyle = CREAM; g.fillRect(56, 210, 144, 14);                   // jharokha sill
+  g.fillStyle = WHITE; for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(70 + i * 23, 14, 6, 0, Math.PI * 2); g.fill(); } // dotted cornice
+  g.fillStyle = PINK_D; g.fillRect(0, H - 8, W, 8);
+});
+const SIGNS = [['JEWELLERS', '#e8c547', '#5a1a10'], ['SAREE KENDRA', '#c8321e', '#fff3d0'], ['BANGLE STORE', '#2e7d4f', '#fff'], ['MISHTAN BHANDAR', '#f2f2f2', '#b0201a'], ['TEXTILES', '#1f4e8c', '#ffe9a8']];
+const groundTexes = SIGNS.map(([txt, bg, fg], vi) => canvasTex(256, 256, (g, W, H) => {  // arcade bay with shop
+  g.fillStyle = PINK; g.fillRect(0, 0, W, H);
+  const shop = ['#2f4f6f', '#6b3b2b', '#3a5a3a', '#7a5a20', '#5a2e4a'][vi];
+  g.fillStyle = '#2a1e1a'; arch(g, 26, 40, 204, 216); g.fill();
+  g.fillStyle = shop; g.fillRect(44, 120, 168, 136);                    // shop interior / shutter
+  g.fillStyle = 'rgba(255,255,255,.15)'; for (let y = 124; y < 256; y += 10) g.fillRect(44, y, 168, 2);
+  g.fillStyle = bg; g.fillRect(52, 92, 152, 22);                        // shop sign board
+  g.fillStyle = fg; g.font = 'bold 14px sans-serif'; g.textAlign = 'center'; g.fillText(txt, 128, 108);
+  g.strokeStyle = WHITE; g.lineWidth = 6; arch(g, 26, 40, 204, 216); g.stroke();
+  g.fillStyle = CREAM; g.fillRect(0, 0, W, 16);
+}));
+const parapetMat = new THREE.MeshStandardMaterial({ color: 0xf0dcc0, roughness: 0.9 });
+const roofMat = new THREE.MeshStandardMaterial({ color: 0xcfb5a0, roughness: 0.95 });
+const upperMat = new THREE.MeshStandardMaterial({ map: upperTex, roughness: 0.92 });
+const groundMats = groundTexes.map(t => new THREE.MeshStandardMaterial({ map: t, roughness: 0.92 }));
+const fillTint = new THREE.MeshStandardMaterial({ color: 0x66aaff, roughness: 0.9 });
+
+// ---------- buildings ----------
+const FLOOR = 3.3, BAY = 3.3;
+function buildBuildings(list) {
+  const P = { ground: [[], [], [], [], []], upper: [], parapet: [], roof: [] };
+  const push = (arr, a, b, c, d, u0, u1, v0, v1) => arr.push([a, b, c, d, u0, u1, v0, v1]);
+  let bi = 0;
+  for (const b of list) {
+    const gv = P.ground[(bi++ * 7 + (b.p.length * 13)) % 5];
+    const pts = []; for (let i = 0; i < b.p.length; i += 2) pts.push(new THREE.Vector2(b.p[i], b.p[i + 1]));
+    // make CCW in x/z so walls face outward
+    let s = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; s += p.x * q.y - q.x * p.y; }
+    if (s > 0) pts.reverse();
+    const h = b.h, floors = Math.max(1, Math.round(h / FLOOR));
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], q = pts[(i + 1) % pts.length]; const L = p.distanceTo(q); if (L < 0.3) continue;
+      const bays = Math.max(1, Math.round(L / BAY));
+      for (let f = 0; f < floors; f++) push(f === 0 ? gv : P.upper, p, q, f * FLOOR, (f + 1) * FLOOR, 0, bays, 0, 1);
+      push(P.parapet, p, q, floors * FLOOR, floors * FLOOR + 0.9, 0, 1, 0, 1);
+    }
+    let tri; try { tri = THREE.ShapeUtils.triangulateShape(pts, []); } catch { tri = []; }
+    for (const t of tri) P.roof.push([pts[t[0]], pts[t[1]], pts[t[2]], floors * FLOOR + 0.05]);
+  }
+  const quads = (arr) => { const pos = [], uv = [], nor = [];
+    for (const [p, q, y0, y1, u0, u1, v0, v1] of arr) {
+      const nx = (q.y - p.y), nz = -(q.x - p.x); const nl = Math.hypot(nx, nz) || 1;
+      const v = [[p.x, y0, p.y, u0, v0], [q.x, y0, q.y, u1, v0], [q.x, y1, q.y, u1, v1], [p.x, y0, p.y, u0, v0], [q.x, y1, q.y, u1, v1], [p.x, y1, p.y, u0, v1]];
+      for (const [x, y, z, a, c] of v) { pos.push(x, y, z); uv.push(a, c); nor.push(nx / nl, 0, nz / nl); }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); return g; };
+  const roofs = () => { const pos = [], nor = [], uv = [];
+    for (const [a, b, c, y] of P.roof) { for (const p of [a, c, b]) { pos.push(p.x, y, p.y); nor.push(0, 1, 0); uv.push(0, 0); } }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); return g; };
+  const geo = mergeGeometries([...P.ground.map(quads), quads(P.upper), quads(P.parapet), roofs()], true);
+  const mesh = new THREE.Mesh(geo, [...groundMats, upperMat, parapetMat, roofMat]); mesh.castShadow = mesh.receiveShadow = true; return mesh;
+}
+const osmB = DATA.buildings.filter(b => !b.f), fillB = DATA.buildings.filter(b => b.f);
+const osmMesh = buildBuildings(osmB); scene.add(osmMesh);
+const fillMesh = buildBuildings(fillB); scene.add(fillMesh);
+
+// ---------- ground, green, roads ----------
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xc9b38a, roughness: 1 }));
+ground.receiveShadow = true; scene.add(ground);
+function polyMesh(flat, y, mat) { const pts = []; for (let i = 0; i < flat.length; i += 2) pts.push(new THREE.Vector2(flat[i], flat[i + 1]));
+  let tri; try { tri = THREE.ShapeUtils.triangulateShape(pts, []); } catch { return null; } const pos = [];
+  for (const t of tri) for (const k of [t[0], t[2], t[1]]) pos.push(pts[k].x, y, pts[k].y);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.receiveShadow = true; return m; }
+const greenMat = new THREE.MeshStandardMaterial({ color: 0x6f8f4a, roughness: 1 });
+for (const g of DATA.green) { const m = polyMesh(g.p, 0.03, greenMat); if (m) scene.add(m); }
+
+const asphalt = new THREE.MeshStandardMaterial({ color: 0x46474b, roughness: 0.95 });
+const paving = new THREE.MeshStandardMaterial({ color: 0x8c7f70, roughness: 0.95 });
+const footpath = new THREE.MeshStandardMaterial({ color: 0xd2c3ab, roughness: 0.95 });
+const PAVED = new Set(['pedestrian', 'footway', 'living_street', 'service', 'path']);
+const MAIN = new Set(['trunk', 'primary', 'secondary', 'tertiary']);
+const ORDER = { trunk: 6, primary: 5, secondary: 4, tertiary: 3, residential: 2, unclassified: 2 };
+function ribbon(flat, half, y, out) {
+  for (let i = 0; i + 3 < flat.length; i += 2) {
+    const ax = flat[i], az = flat[i + 1], bx = flat[i + 2], bz = flat[i + 3]; const L = Math.hypot(bx - ax, bz - az); if (L < 0.01) continue;
+    const nx = -(bz - az) / L * half, nz = (bx - ax) / L * half;
+    out.push(ax + nx, y, az + nz, bx + nx, y, bz + nz, bx - nx, y, bz - nz, ax + nx, y, az + nz, bx - nx, y, bz - nz, ax - nx, y, az - nz);
+  }
+  for (let i = 0; i < flat.length; i += 2) { const cx = flat[i], cz = flat[i + 1]; const n = 10; // round joints
+    for (let k = 0; k < n; k++) { const a0 = k / n * Math.PI * 2, a1 = (k + 1) / n * Math.PI * 2; out.push(cx, y, cz, cx + Math.cos(a1) * half, y, cz + Math.sin(a1) * half, cx + Math.cos(a0) * half, y, cz + Math.sin(a0) * half); } }
+}
+const buf = { asphalt: [], paving: [], footpath: [] };
+for (const r of DATA.roads) {
+  if (r.c === 'steps') continue;
+  const y = 0.05 + (ORDER[r.c] || 1) * 0.004;
+  ribbon(r.p, r.w / 2, y, PAVED.has(r.c) ? buf.paving : buf.asphalt);
+  if (MAIN.has(r.c)) { ribbon(r.p, r.w / 2 + 2.8, 0.035, buf.footpath); }
+}
+for (const [k, mat] of [['footpath', footpath], ['paving', paving], ['asphalt', asphalt]]) {
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(buf[k], 3)); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mat); m.receiveShadow = true; scene.add(m);
+}
+// city wall
+const wallMat = new THREE.MeshStandardMaterial({ color: 0xd07a5e, roughness: 0.95 });
+for (const w of DATA.walls) for (let i = 0; i + 3 < w.p.length; i += 2) {
+  const ax = w.p[i], az = w.p[i + 1], bx = w.p[i + 2], bz = w.p[i + 3]; const L = Math.hypot(bx - ax, bz - az); if (L < 0.5) continue;
+  const m = new THREE.Mesh(new THREE.BoxGeometry(L, 7, 2.2), wallMat); m.position.set((ax + bx) / 2, 3.5, (az + bz) / 2); m.rotation.y = -Math.atan2(bz - az, bx - ax); m.castShadow = m.receiveShadow = true; scene.add(m);
+}
+// landmark labels
+const label = document.getElementById('label');
+const named = DATA.buildings.filter(b => b.n && /Mahal|Diwan|Masjid|Gate|Yantra|Palace/i.test(b.n));
+
+document.getElementById('stats').textContent = `${DATA.roads.length} roads · ${osmB.length} mapped buildings · ${fillB.length} filled-in shop rows`;
+
+// ---------- tour along Johari Bazar (keeps left) ----------
+function chain(nameRe, sortKey) { const pts = []; for (const r of DATA.roads) if (nameRe.test(r.n)) for (let i = 0; i < r.p.length; i += 2) pts.push(new THREE.Vector3(r.p[i], 1.7, r.p[i + 1]));
+  pts.sort(sortKey); const sm = pts.map((p, i) => { const a = pts.slice(Math.max(0, i - 6), i + 7); const c = new THREE.Vector3(); a.forEach(q => c.add(q)); return c.divideScalar(a.length); });
+  const out = []; for (const p of sm) if (!out.length || out[out.length - 1].distanceTo(p) > 6) out.push(p); return out; }
+let tour = chain(/Johari/i, (a, b) => b.z - a.z);                 // south → north to Badi Chaupar
+const north = chain(/Hawa Mahal|Siredeori|Sireh Deori|Ramganj/i, (a, b) => a.z - b.z);
+if (north.length) tour = tour.concat(north.filter(p => p.z < -5).slice(0, 40));
+let curve = tour.length > 2 ? new THREE.CatmullRomCurve3(tour) : null;
+let touring = false, tourT = 0;
+document.getElementById('tour').onclick = () => { if (!curve) return; touring = true; tourT = 0; controls.enabled = false; };
+document.getElementById('bird').onclick = () => { touring = false; controls.enabled = true; camera.position.set(260, 220, 340); controls.target.set(0, 0, 150); };
+let showFill = false; document.getElementById('fills').onclick = () => { showFill = !showFill; fillMesh.material = showFill ? fillTint : [...groundMats, upperMat, parapetMat, roofMat]; };
+renderer.domElement.addEventListener('pointerdown', () => { if (touring) { touring = false; controls.enabled = true; controls.target.copy(camera.position).add(new THREE.Vector3(0, -1, -8)); } });
+
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(0.05, clock.getDelta());
+  if (touring && curve) {
+    const len = curve.getLength(); tourT += dt * (25 / 3.6) / len;   // 25 km/h
+    if (tourT >= 1) { touring = false; controls.enabled = true; }
+    else { const p = curve.getPointAt(tourT), a = curve.getPointAt(Math.min(1, tourT + 0.004));
+      const dir = a.clone().sub(p).setY(0).normalize(); const left = new THREE.Vector3(dir.z, 0, -dir.x);
+      camera.position.copy(p).addScaledVector(left, 2.2); camera.lookAt(a.clone().addScaledVector(left, 2.2).addScaledVector(dir, 20)); }
+    let near = null, best = 60; for (const b of named) { const d = Math.hypot(b.p[0] - camera.position.x, b.p[1] - camera.position.z); if (d < best) { best = d; near = b; } }
+    label.style.display = near ? 'block' : 'none'; if (near) label.textContent = near.n;
+  } else { controls.update(); label.style.display = 'none'; }
+  sun.target.position.set(controls.target.x, 0, controls.target.z); sun.position.set(controls.target.x - 180, 260, controls.target.z + 120);
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

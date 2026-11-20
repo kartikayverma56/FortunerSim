@@ -1,0 +1,2 @@
+acc 0–20 km/h=1.19 s | 0–40 km/h=2.65 s | 0–60 km/h=4.42 s | 0–80 km/h=6.90 s | 0–100 km/h=10.66 s | Distance to 100=186 m
+brake 80–0 km/h distance=29.4 m | Peak deceleration=1.00 g | Mean deceleration=0.85 g | Max dive=3.9°

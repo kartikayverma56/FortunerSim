@@ -2,6 +2,11 @@ import type { Vehicle } from '../physics/vehicle';
 import { zoneLabelAt, SURFACES, humps } from '../world/terrain';
 import type { TestRunner, TestResult } from './tests';
 import type { CarVisual } from '../vehicle/rig';
+import type { CrashReport } from '../physics/crashRecorder';
+
+/** A crash report as kept in the log (localStorage fsim.crashlog): series thinned to ≤ 300 points. */
+export interface CrashLogEntry { when: string; title: string; minor: boolean; rows: [string, string][]; series: CrashReport['series']; data: Record<string, unknown>; note?: string }
+const LOG_KEY = 'fsim.crashlog', LOG_MAX = 20;
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -11,7 +16,9 @@ export class Hud {
   gm = $('gmeter') as HTMLCanvasElement; gg = this.gm.getContext('2d')!;
   hist: number[][] = []; showChart = false; private toastT = 0; private acc = 0;
 
+  crashLog: CrashLogEntry[] = [];
   constructor(private tests: TestRunner) {
+    try { const raw = localStorage.getItem(LOG_KEY); if (raw) { const a = JSON.parse(raw); if (Array.isArray(a)) this.crashLog = a.slice(-LOG_MAX); } } catch { /* storage blocked or corrupt: start empty */ }
     const sel = $('humpSel') as HTMLSelectElement;
     sel.innerHTML = humps.map(h => `<option value="${h.id}">${h.id} · ${h.name}</option>`).join('');
     sel.onchange = () => { tests.humpId = sel.value; };
@@ -27,7 +34,7 @@ export class Hud {
   }
   toast(msg: string, t = 2.5) { const el = $('toast'); el.textContent = msg; el.style.opacity = '1'; this.toastT = t; }
 
-  update(dt: number, veh: Vehicle, extra: { cam: string; fps: number; audioMode: string; car: CarVisual; gfx?: string; indL?: boolean; indR?: boolean }) {
+  update(dt: number, veh: Vehicle, extra: { cam: string; fps: number; audioMode: string; car: CarVisual; gfx?: string; indL?: boolean; indR?: boolean; calls?: number; tris?: number }) {
     $('l-indl').classList.toggle('lit', !!extra.indL); $('l-indr').classList.toggle('lit', !!extra.indR);
     if (this.toastT > 0) { this.toastT -= dt; if (this.toastT <= 0) $('toast').style.opacity = '0'; }
     this.acc += dt;
@@ -43,7 +50,7 @@ export class Hud {
     this.drawG(veh);
   }
 
-  private drawPanels(veh: Vehicle, extra: { cam: string; fps: number; audioMode: string; car: CarVisual; gfx?: string }) {
+  private drawPanels(veh: Vehicle, extra: { cam: string; fps: number; audioMode: string; car: CarVisual; gfx?: string; calls?: number; tris?: number }) {
     const w = veh.wheels;
     $('zone').textContent = zoneLabelAt(veh.pos.x, veh.pos.z);
     $('info').innerHTML = [
@@ -52,7 +59,8 @@ export class Hud {
       `Boost ${(veh.boost * 100).toFixed(0)} % · TC slip ${(veh.tcSlip * 100).toFixed(0)} % · Engine ${veh.engineTorque.toFixed(0)} N·m`,
       `Pitch ${(veh.pitch * 57.3).toFixed(1)}° · Roll ${(veh.roll * 57.3).toFixed(1)}° · Yaw ${(veh.yawRate * 57.3).toFixed(0)}°/s`,
       `Underbody clearance ${(veh.bellyMinClear * 1000).toFixed(0)} mm${veh.bellyScrape > 0 ? ' <b class="warn">SCRAPE</b>' : ''}`,
-      `Odometer ${(veh.odometer / 1000).toFixed(2)} km · Cam ${extra.cam} · Sound ${extra.audioMode} · ${extra.fps.toFixed(0)} fps${extra.gfx ? ' · Gfx ' + extra.gfx : ''}`,
+      ...(veh.damage.any ? [`<b class="warn">${veh.damage.summary()}</b> · <kbd>Y</kbd> repair`] : []),
+      `Odometer ${(veh.odometer / 1000).toFixed(2)} km · Cam ${extra.cam} · Sound ${extra.audioMode} · ${extra.fps.toFixed(0)} fps${extra.calls !== undefined ? ` · ${extra.calls} draws · ${((extra.tris ?? 0) / 1000).toFixed(0)}k tris` : ''}${extra.gfx ? ' · Gfx ' + extra.gfx : ''}`,
     ].join('<br>');
     $('wheels').innerHTML = w.map(x => {
       const travel = x.travelFrac, slip = x.slip;
@@ -64,6 +72,10 @@ export class Hud {
     lamp('l-abs', veh.absActive); lamp('l-vsc', veh.vscActive); lamp('l-trc', veh.trcActive); lamp('l-dac', veh.dacActive || veh.dacOn); lamp('l-hac', veh.hacT > 0);
     lamp('l-4l', veh.driveMode === '4L'); lamp('l-4h', veh.driveMode === '4H'); lamp('l-lock', veh.rearLocker); lamp('l-vscoff', !veh.vscOn);
     $('test-status').textContent = this.tests.status;
+    // crash in progress: unbounded roll (±180°) and quarter turns, centre screen
+    const cs = $('crash-status'), rec = veh.recorder;
+    if (rec.open && rec.serious) { cs.style.display = 'block'; cs.textContent = `CRASH · roll ${(veh.rollFull * 57.3).toFixed(0)}° · ${rec.quarterTurns} quarter turn${rec.quarterTurns === 1 ? '' : 's'} · ${(Math.hypot(veh.vel.x, veh.vel.y, veh.vel.z) * 3.6).toFixed(0)} km/h`; }
+    else cs.style.display = 'none';
   }
 
   showResult(r: TestResult) {
@@ -77,13 +89,39 @@ export class Hud {
       g.fillStyle = '#0b0f14'; g.fillRect(0, 0, c.width, c.height);
       const tmax = Math.max(...r.series.flatMap(s => s.t), 0.1);
       r.series.forEach((s, k) => {
-        const lo = Math.min(...s.y), hi = Math.max(...s.y), span = hi - lo || 1;
+        const lo = Math.min(...s.y), hi = Math.max(...s.y), span = hi - lo > 1e-3 ? hi - lo : 1; // a flat series stays a flat line
         g.strokeStyle = cols[k]; g.lineWidth = 1.6; g.beginPath();
         s.t.forEach((t, i) => { const x = 8 + t / tmax * (c.width - 16), y = c.height - 18 - (s.y[i] - lo) / span * (c.height - 40); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
         g.fillStyle = cols[k]; g.font = '11px system-ui'; g.fillText(`${s.name} (${lo.toFixed(1)}…${hi.toFixed(1)} ${s.unit})`, 8 + k * 128, 13);
       });
       g.fillStyle = '#94a3b8'; g.fillText(`0 … ${tmax.toFixed(1)} s`, c.width - 70, c.height - 4);
     }
+  }
+
+  /** Adds a finished crash report to the log (newest last, 20 kept) and stores it. */
+  addCrash(r: CrashReport) {
+    const thin = (s: CrashReport['series'][number]) => { const k = Math.max(1, Math.ceil(s.t.length / 300)); return { name: s.name, unit: s.unit, t: s.t.filter((_, i) => i % k === 0), y: s.y.filter((_, i) => i % k === 0).map(v => +v.toFixed(2)) }; };
+    const e: CrashLogEntry = { when: new Date().toLocaleString(), title: r.title, minor: r.minor, rows: r.rows, series: r.series.map(thin), data: r.data, note: r.note };
+    this.crashLog.push(e); if (this.crashLog.length > LOG_MAX) this.crashLog.splice(0, this.crashLog.length - LOG_MAX);
+    try { localStorage.setItem(LOG_KEY, JSON.stringify(this.crashLog)); } catch { /* quota or blocked: kept for this session only */ }
+  }
+  /** P: the last 20 crash reports; click one to open it; Save JSON downloads the whole log. */
+  toggleCrashLog() {
+    const el = $('crashlog');
+    if (el.style.display === 'block') { el.style.display = 'none'; return; }
+    const rows = this.crashLog.map((e, i) => ({ e, i })).reverse();
+    el.innerHTML = `<div class="rt">Crash log (last ${LOG_MAX}) <button id="clclose">✕</button></div>
+      ${rows.length ? `<table>${rows.map(({ e, i }) => { const d = e.data as any; return `<tr class="clrow" data-i="${i}"><td>${e.when}</td><td><b>${e.title}</b>${e.minor ? ' <span class="note">(minor)</span>' : ''}<br><span class="note">ΔV ${d.dv_long ?? '–'} / ${d.dv_lat ?? '–'} m/s · peak ${d.peak_g_cg ?? '–'} g · ${d.quarter_turns ?? 0} quarter turns · crush ${d.energy_kJ?.crush ?? 0} kJ</span></td></tr>`; }).join('')}</table>` : '<p class="note">No crashes yet. Try the crash pad (key 0) or the crash tests (T).</p>'}
+      <button class="btn" id="clsave">Save JSON</button><button class="btn sec" id="clclear">Clear log</button>`;
+    el.style.display = 'block';
+    $('clclose').onclick = () => { el.style.display = 'none'; };
+    $('clsave').onclick = () => {
+      const blob = new Blob([JSON.stringify(this.crashLog, null, 1)], { type: 'application/json' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `fortuner-crashlog-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    };
+    $('clclear').onclick = () => { this.crashLog = []; try { localStorage.removeItem(LOG_KEY); } catch { /* ignore */ } el.style.display = 'none'; };
+    el.querySelectorAll<HTMLElement>('.clrow').forEach(tr => { tr.onclick = () => { const e = this.crashLog[+tr.dataset.i!]; if (e) { el.style.display = 'none'; this.showResult({ title: `${e.title} · ${e.when}`, rows: e.rows, series: e.series, note: e.note }); } }; });
   }
 
   private drawDial(veh: Vehicle) {

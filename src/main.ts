@@ -5,14 +5,20 @@ import { buildWorld } from './world/worldMesh';
 import { CarVisual } from './vehicle/rig';
 import { CameraRig } from './cameras';
 import { Input } from './input';
-import { TestRunner } from './ui/tests';
+import { TestRunner, type TestKind } from './ui/tests';
 import { Hud } from './ui/hud';
-import { humps, IROAD, PAD, OFFROAD } from './world/terrain';
+import { humps, IROAD, PAD, OFFROAD, CRASH } from './world/terrain';
+import { colliders } from './world/colliders';
+import { DamageVisual } from './vehicle/damageVisual';
+import type { BodyImpactEvent } from './audio/types';
 import { VehicleAudio } from './audio/VehicleAudio';
 import type { AudioState } from './audio/types';
 import { buildReflectionEnvironment, SunShadowFollower } from './world/carLighting';
 import { ContactShadow } from './vehicle/contactShadow';
+import { SkidMarks } from './vehicle/skidMarks';
+import { TyreSmoke } from './vehicle/tyreSmoke';
 import { Signals } from './vehicle/signals';
+import { Mirrors } from './render/mirrors';
 import { PRESETS, detectLevel, gpuLabel, lowerLevel, nextChoice, pixelRatioFor, readChoice, saveChoice, type Choice, type Level } from './quality';
 
 const PHYS_DT = 1 / 1000;
@@ -49,6 +55,8 @@ async function boot() {
   status('Loading Fortuner model…');
   const car = new CarVisual(); await car.load(veh, bootPreset.model); scene.add(car.root);
   const contact = new ContactShadow(scene, veh);
+  const skid = new SkidMarks(); scene.add(skid.mesh); // braking, drift and burnout tyre marks
+  const smoke = new TyreSmoke(); scene.add(smoke.points); // tyre smoke / dust where a tyre really slides
   const signals = new Signals();
   const camRig = new CameraRig(renderer.domElement);
   const input = new Input();
@@ -72,7 +80,11 @@ async function boot() {
   const TELE: Record<string, [number, number, number, string]> = {
     Digit5: [3.5, -40, 0, 'Runway (0–100 / braking)'], Digit6: [IROAD.x0 + 5.8, -10, 0, 'Indian road strip'],
     Digit7: [IROAD.x0 + 5.8, humps[0].z - 60, 0, 'Speed-breaker section'], Digit8: [OFFROAD.x0 + 14, OFFROAD.z0 + 4, 0, 'Off-road park'], Digit9: [PAD.cx, PAD.cz - 100, 0, 'Handling pad'],
+    Digit4: [421.75, 6, 0, 'Indian road: state highway → district road → village (left lane)'], // new road (roads.ts), x = 420 + left-lane centre
+    Digit0: [CRASH.x0 + 20, CRASH.z0 + 15, 0, 'Crash pad: kerb (x −630), sand, ramp (x −545), ditch (x −522), pole and wall to the west — T for crash tests'],
   };
+  const dmgVis = new DamageVisual(car, veh);
+  const repair = () => { veh.repair(); dmgVis.repair(); };
 
   const clock = new THREE.Clock(); let acc = 0, fpsS = 60, frame = 0;
   // Auto graphics: average real frame rate over 3 s windows; below 40 fps, step down one level.
@@ -91,9 +103,9 @@ async function boot() {
     const keys = input.takePressed();
     const pad = input.padPressed;
     for (const k of keys) {
-      if (TELE[k]) { tests.stop(); const [x, z, h, n] = TELE[k]; veh.reset(x, z, h); camRig.set(camRig.mode); hud.toast('Teleported: ' + n); continue; }
+      if (TELE[k]) { tests.stop(); world.restoreObjects(); const [x, z, h, n] = TELE[k]; veh.reset(x, z, h); camRig.set(camRig.mode); hud.toast('Teleported: ' + n, k === 'Digit0' ? 5 : 2.5); continue; }
       switch (k) {
-        case 'Enter': if (veh.ignition) { veh.stopEngine(); hud.toast('Engine off'); } else { veh.startEngine(); hud.toast('Cranking…'); } break;
+        case 'Enter': if (veh.ignition) { veh.stopEngine(); hud.toast('Engine off'); } else { const why = veh.startBlock(); veh.startEngine(); hud.toast(why || (veh.damage.airbags ? 'Fuel pump reset — cranking…' : 'Cranking…'), why ? 4 : 2.5); } break;
         case 'KeyG': { const order = ['P', 'R', 'N', 'D'] as const; const i = order.indexOf(veh.selector as any); const nx = order[(i + 1) % 4]; if (!veh.setSelector(nx)) hud.toast('Stop the vehicle first'); else hud.toast('Selector ' + nx); break; }
         case 'KeyR': { const nx = veh.selector === 'R' ? 'D' : 'R'; if (!veh.setSelector(nx)) hud.toast('Stop the vehicle first'); else hud.toast('Selector ' + nx); break; }
         case 'KeyX': veh.shiftManual(+1); hud.toast('Manual ' + veh.manualGear); break;
@@ -113,7 +125,13 @@ async function boot() {
         case 'KeyI': hud.inspector(car); break;
         case 'KeyM': { const m = !(audio as any)._muted; (audio as any)._muted = m; audio.setMuted(m); hud.toast(m ? 'Muted' : 'Sound on'); break; }
         case 'KeyB': { const order = ['synth', 'samples', 'hybrid'] as const; const nx = order[(order.indexOf(audio.mode) + 1) % 3]; audio.setMode(nx); hud.toast('Sound: ' + nx); break; }
-        case 'Backspace': { tests.stop(); const hx = 2 * (veh.q.x * veh.q.z + veh.q.w * veh.q.y), hz = 1 - 2 * (veh.q.x ** 2 + veh.q.y ** 2); veh.reset(veh.pos.x, veh.pos.z, Math.atan2(hx, hz)); hud.toast('Recovered'); break; }
+        case 'Backspace': {
+          tests.stop(); const hx = 2 * (veh.q.x * veh.q.z + veh.q.w * veh.q.y), hz = 1 - 2 * (veh.q.x ** 2 + veh.q.y ** 2); veh.reset(veh.pos.x, veh.pos.z, Math.atan2(hx, hz));
+          const both = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'); if (both) repair();
+          hud.toast(both ? 'Recovered and repaired' : veh.damage.any ? 'Recovered onto the wheels (damage kept — Y repairs)' : 'Recovered'); break;
+        }
+        case 'KeyY': repair(); hud.toast('Repaired: body, glass, lamps, wheels and engine'); break;
+        case 'KeyP': hud.toggleCrashLog(); break;
         case 'Escape': tests.stop(); break;
         case 'KeyQ': {
           gfxChoice = nextChoice(gfxChoice); saveChoice(gfxChoice); gfxGrace = 3;
@@ -128,8 +146,13 @@ async function boot() {
     for (const b of pad) { if (b === 14) signals.toggleTurn(1); if (b === 15) signals.toggleTurn(-1); if (b === 3) camRig.next(); if (b === 2) veh.ignition ? veh.stopEngine() : veh.startEngine(); if (b === 5) veh.shiftManual(+1); if (b === 4) veh.shiftManual(-1); if (b === 9) { const order = ['P', 'R', 'N', 'D'] as const; veh.setSelector(order[(order.indexOf(veh.selector as any) + 1) % 4]); } }
   };
   const toggle = (id: string) => { const el = document.getElementById(id)!; el.style.display = el.style.display === 'block' ? 'none' : 'block'; };
-  (window as any).runTest = (k: 'acc' | 'brake' | 'hump') => { tests.start(k, veh); document.getElementById('testsPanel')!.style.display = 'none'; camRig.set(k === 'hump' ? 'wheel' : 'chase'); };
-  (window as any).sim = { veh, car, camRig, tests, audio, renderer, scene, input, signals, contact, world };
+  (window as any).runTest = (k: TestKind) => {
+    if (k === 'kerb' || k === 'pole' || k === 'drop') world.restoreObjects();
+    tests.start(k, veh); document.getElementById('testsPanel')!.style.display = 'none'; camRig.set(k === 'hump' || k === 'pothole' ? 'wheel' : 'chase');
+  };
+  (window as any).sim = { veh, car, camRig, tests, audio, renderer, scene, input, signals, contact, world, skid, colliders, dmgVis, repair, hud };
+  const mirrors = new Mirrors(renderer, scene, car); (window as any).sim.mirrors = mirrors; // live rear-view mirrors (Medium / High)
+  (window as any).sim.smoke = smoke;
 
   const aState: AudioState = { ignition: false, rpm: 0, throttle: 0, load: 0, boost: 0, speed: 0, gear: 0, shifting: false, tcSlip: 0, wheelSpeed: 0, tyreSlip: [0, 0, 0, 0], tyreLoad: [0, 0, 0, 0], surface: ['asphalt', 'asphalt', 'asphalt', 'asphalt'], brake: 0, absActive: false, impacts: [], bellyScrape: 0, camera: 'exterior', driveMode: '2H' };
   let wasTesting = false;
@@ -143,20 +166,32 @@ async function boot() {
     handleKeys();
     const userIn = input.update(dt, veh.kmh);
     // physics at 1 kHz
-    acc += dt; let n = 0; const impacts: AudioState['impacts'] = []; let scrape = 0, seatAz = 0;
+    acc += dt; let n = 0; const impacts: AudioState['impacts'] = []; let scrape = 0, seatAz = 0; const bodyImpacts: BodyImpactEvent[] = [];
     while (acc >= PHYS_DT && n < 110) {
       const tIn = tests.update(PHYS_DT, veh);
       Object.assign(veh.input, tIn ?? userIn);
       veh.step(PHYS_DT); acc -= PHYS_DT; n++;
       if (veh.impacts.length) impacts.push(...veh.impacts);
+      if (veh.bodyImpacts.length) for (const b of veh.takeBodyImpacts()) if (bodyImpacts.length < 12) bodyImpacts.push(b);
       scrape = Math.max(scrape, veh.bellyScrape);
       seatAz += veh.seatAz;
     }
     if (n) camRig.seatAz = seatAz / n;
     for (const im of impacts) camRig.kick(im.velocity);
+    for (const b of bodyImpacts) camRig.kick(1.5 + Math.min(4, Math.sqrt(2 * b.energy / veh.mTot))); // body hits shake harder than suspension thumps
     if (n >= 110) acc = 0;
+    colliders.stepProps(dt); world.updateObjects(dt); // knocked cones fly, broken signs fall
+    // crash reports: a crash test shows its own result; other crashes pop up at rest (cone strikes are only logged)
+    for (const rep of veh.recorder.done.splice(0)) {
+      hud.addCrash(rep);
+      const inTest = !!tests.active || (tests.crashReport != null && tests.crashReport.id === rep.id);
+      if (!inTest && !rep.minor) hud.showResult(rep); else if (rep.minor && (rep.data.cones as number) > 0) hud.toast(rep.title + ' — logged (P)', 2.5);
+    }
+    for (const msg of veh.damage.takeEvents()) hud.toast(msg, 3.5);
+    if (veh.engineStopReason) { const r = veh.engineStopReason; veh.engineStopReason = null; if (r === 'dead') hud.toast('Engine dead', 3); }
     if (wasTesting && !tests.active && tests.result) { hud.showResult(tests.result); }
     wasTesting = !!tests.active;
+    dmgVis.update(); // dents (≤ 3 ms slices), glass, lamps, mirrors
     car.update(veh);
     camRig.update(dt, veh, car);
     for (const o of car.cockpitHide) o.visible = !camRig.interior;
@@ -167,6 +202,8 @@ async function boot() {
     signals.update(dt, veh, { ctx: audio.started ? audio.audioContext : null, bus: audio.fxBus, interior: camRig.interior });
     car.setLamps(veh.input.brake > 0.02 || veh.dacActive ? 1 : 0, veh.selector === 'R' && veh.ignition, signals.left, signals.right);
     contact.update(veh);
+    skid.update(veh);
+    smoke.setLevel(gfxLevel); smoke.update(veh, dt);
     world.updateShadow(car.root.position);
     sunShadow.update(car.root.position); // tighter, texel-snapped box (overrides the position set just above)
     // audio
@@ -178,9 +215,10 @@ async function boot() {
       absActive: veh.absActive, brake: veh.input.brake, bellyScrape: scrape, camera: camRig.interior ? 'interior' : 'exterior', driveMode: veh.driveMode,
     });
     for (let i = 0; i < 4; i++) { aState.tyreSlip[i] = veh.wheels[i].slip; aState.tyreLoad[i] = veh.wheels[i].Fz; }
-    aState.surface = veh.audioSurface(); aState.impacts = impacts;
+    aState.surface = veh.audioSurface(); aState.impacts = impacts; aState.bodyImpacts = bodyImpacts;
     if (audio.started) audio.update(aState, dt);
-    hud.update(dt, veh, { cam: camRig.mode, fps: fpsS, audioMode: audio.started ? audio.mode : 'off', car, gfx: gfxText(), indL: signals.left, indR: signals.right });
+    hud.update(dt, veh, { cam: camRig.mode, fps: fpsS, audioMode: audio.started ? audio.mode : 'off', car, gfx: gfxText(), indL: signals.left, indR: signals.right, calls: renderer.info.render.calls, tris: renderer.info.render.triangles });
+    mirrors.setLevel(PRESETS[gfxLevel].mirrors); mirrors.update(camRig.cam, camRig.interior); // after car + camera, before the main render
     renderer.render(scene, camRig.cam);
   }
   loop();

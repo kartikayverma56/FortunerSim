@@ -1,0 +1,23 @@
+| case | test | right m | hdg ° | dist m | end km/h | peak driven κ | time κ > 0.2 s | static Fz FL/FR/RL/RR N | target | result |
+|---|---|---|---|---|---|---|---|---|---|---|
+| default car, flat asphalt | c60 | 0.001 | -0.001 | 170 | 61 | 0.036 | 0.00 | 5771/5770/5189/5190 | |right| ≤ 0.15 m, |hdg| ≤ 0.1° | PASS |
+| default car, flat asphalt | c100 | 0.002 | -0.000 | 279 | 100 | 0.013 | 0.00 | 5771/5770/5189/5190 | |right| ≤ 0.15 m, |hdg| ≤ 0.1° | PASS |
+| default car, flat asphalt, A-TRC on | launch | -0.002 | 0.001 | 166 | 97 | 0.353 | 0.89 | 5771/5770/5189/5190 | |right| ≤ 0.5 m, κ ≤ 0.2 | FAIL |
+| runway from spawn (3.5, −40) | c60 | 0.001 | -0.001 | 170 | 61 | 0.036 | 0.00 | 5771/5770/5189/5190 | |right| ≤ 0.15 m, |hdg| ≤ 0.1° | PASS |
+| runway from spawn (3.5, −40) | c100 | 0.002 | -0.000 | 279 | 100 | 0.013 | 0.00 | 5771/5770/5189/5190 | |right| ≤ 0.15 m, |hdg| ≤ 0.1° | PASS |
+| runway from spawn (3.5, −40) | launch | -0.002 | 0.001 | 166 | 97 | 0.353 | 0.89 | 5771/5770/5189/5190 | |right| ≤ 0.5 m, κ ≤ 0.2 | FAIL |
+| symmetric (driverMass 0) | c60 | 0.001 | -0.000 | 170 | 61 | 0.037 | 0.00 | 5564/5563/5034/5035 | |right| ≤ 0.01 m, |hdg| ≤ 0.01° | PASS |
+| symmetric (driverMass 0) | c100 | 0.002 | -0.000 | 279 | 100 | 0.014 | 0.00 | 5564/5563/5034/5035 | |right| ≤ 0.01 m, |hdg| ≤ 0.01° | PASS |
+| symmetric (driverMass 0) | launch | -0.002 | 0.001 | 168 | 98 | 0.365 | 0.98 | 5564/5563/5034/5035 | |right| ≤ 0.01 m, |hdg| ≤ 0.01° | PASS |
+| symmetric, jackingForces off | launch | -0.002 | 0.001 | 158 | 96 | 0.406 | 1.28 | 5709/5710/5268/5268 | |right| ≤ 0.01 m, |hdg| ≤ 0.01° | PASS |
+| VSC/A-TRC OFF, flat asphalt | launch | 0.078 | -0.028 | 162 | 97 | 1.200 | 0.86 | 5771/5770/5189/5190 | |right| ≤ 0.5 m | PASS |
+| VSC OFF, gravel (burnout: κ > 0.5) | launch | 0.049 | -0.025 | 121 | 83 | 1.200 | 3.42 | 5744/5743/5219/5219 | – | PASS |
+| VSC OFF, grass | launch | -0.007 | 0.004 | 104 | 74 | 1.200 | 4.79 | 5708/5707/5264/5264 | – | info |
+| info: RHD driver at −0.38 m | c60 | 0.001 | -0.001 | 170 | 61 | 0.036 | 0.00 | 5771/5770/5189/5190 | – | info |
+| info: RHD driver at −0.38 m | c100 | 0.002 | -0.000 | 279 | 100 | 0.013 | 0.00 | 5771/5770/5189/5190 | – | info |
+| info: RHD driver at −0.38 m | launch | -0.002 | 0.001 | 166 | 97 | 0.353 | 0.89 | 5771/5770/5189/5190 | – | info |
+| info: 2.5 % crossfall falling left | c100 | -1.625 | 0.548 | 279 | 100 | 0.013 | 0.00 | 5693/5786/5473/4971 | – | info |
+| info: 2.5 % crossfall falling left | launch | 1.452 | -0.218 | 166 | 97 | 0.363 | 1.10 | 5693/5786/5473/4971 | – | info |
+| info: A-TRC on, grass | launch | -0.001 | 0.000 | 107 | 76 | 1.200 | 4.45 | 5708/5707/5264/5264 | |right| ≤ 0.5 m, κ ≤ 0.2 | FAIL |
+| info: A-TRC on, 2.5 % crossfall, grass | launch | 44.517 | -46.760 | 90 | 63 | 1.200 | 6.73 | 5801/5635/5467/5019 | – | info |
+3 FAIL

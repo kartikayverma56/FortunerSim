@@ -435,6 +435,13 @@ export class VehicleAudio implements VehicleAudioApi {
       }
     }
 
+    if (s.bodyImpacts && s.bodyImpacts.length) {
+      for (let k = 0; k < Math.min(6, s.bodyImpacts.length); k++) {
+        const b = s.bodyImpacts[k]; if (!b || !(b.energy > 50)) continue;
+        port.postMessage({ type: 'bodyImpact', e: b.energy, m: b.material, z: b.zone });
+      }
+    }
+
     // ---------------- cabin vs exterior
     const cabinT = s.camera === 'interior' ? 1 : 0;
     this.cabinBlend += (cabinT - this.cabinBlend) * (1 - Math.exp(-dt / 0.08));

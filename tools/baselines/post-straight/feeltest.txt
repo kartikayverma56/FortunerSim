@@ -1,0 +1,5 @@
+creep after 15 s: 7.6 km/h, gear 1 rpm 750
+throttle 0.15 1s 3km/h 0.09g | 3s 7km/h 0.03g | 6s 11km/h 0.07g
+throttle 0.3 1s 7km/h 0.29g | 3s 23km/h 0.20g | 6s 35km/h 0.12g
+throttle 0.5 1s 14km/h 0.46g | 3s 33km/h 0.22g | 6s 53km/h 0.15g
+full lock: wheel 566 deg, road 33.3 / 25.7 radius 4.94 m

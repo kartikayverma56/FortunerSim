@@ -3,6 +3,8 @@
 // World: +Y up, the main runway runs along +Z.
 
 import type { Surface } from '../audio/types';
+import { hash, fbm, smooth } from './noise';
+import { roadSample, roadSurfaceAt, roadLabelAt, RQ, ROAD_HUMPS } from './roads';
 
 export interface SurfaceProps { mu: number; rr: number; sink: number; label: string }
 export const SURFACES: Record<Surface | 'grass', SurfaceProps> = {
@@ -30,16 +32,7 @@ interface Feature extends Box {
   lod?: number;                                // visual mesh spacing (m)
 }
 
-// ---------- deterministic noise ----------
-function hash(i: number, j: number) { let h = (i * 374761393 + j * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967295; }
-function vnoise(x: number, z: number) {
-  const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j;
-  const u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
-  const a = hash(i, j), b = hash(i + 1, j), c = hash(i, j + 1), d = hash(i + 1, j + 1);
-  return (a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v) * 2 - 1;
-}
-function fbm(x: number, z: number, oct: number, lac = 2.03, gain = 0.5) { let s = 0, a = 1, f = 1, n = 0; for (let k = 0; k < oct; k++) { s += a * vnoise(x * f, z * f); n += a; a *= gain; f *= lac; } return s / n; }
-const smooth = (e0: number, e1: number, x: number) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+// ---------- deterministic noise (src/world/noise.ts) ----------
 
 // ---------- profile builders ----------
 /** Circular-arc hump of height h and radius R (IRC:99), across the road (varies with z). */
@@ -56,9 +49,26 @@ export const RUNWAY = { x0: -7, x1: 7, z0: -60, z1: 1750 };          // 0–100 
 export const IROAD = { x0: 34, x1: 42, z0: -20, z1: 1520 };           // Indian road strip
 export const PAD = { cx: -260, cz: 380, r: 130 };                     // handling pad
 export const OFFROAD = { x0: 110, x1: 300, z0: 0, z1: 520 };
+/** Crash pad (key 0): flat asphalt apron with a 150 mm kerb, a sand pit, a one-side ramp, a ditch, a test pole and a
+ *  rigid wall (PLAN_crash_damage_mirrors.md P0). Clear of the handling pad. */
+export const CRASH = { x0: -700, x1: -500, z0: 0, z1: 300 };
+export const CRASHPAD = {
+  kerb: { x: -630, w: 10, z0: 40, z1: 140, h: 0.15 },          // raised platform x ∈ [x, x + w], face run 0.04 m, high side +X
+  sand: { x0: -605, x1: -575, z0: 40, z1: 140 },
+  ramp: { x0: -545.0, x1: -543.8, z0: 60, len: 3.5, h: 0.6 },   // one-side ramp under the left wheels, sharp drop at the top
+  ditch: { x: -522, z0: 40, z1: 200, d: 0.6 },                  // 30° slope, 1 m flat bottom, 45° far bank (grass)
+  pole: { x: -680, z: 200, r: 0.127 },                          // Ø 254 mm steel test pole (Euro NCAP pole size)
+  wall: { x: -670, z: 285, halfX: 8, halfZ: 0.5, h: 1.5 },      // rigid concrete barrier, face at z = 284.5
+  signs: { x: -655, z: [60, 85, 110, 135] },                    // frangible sign posts (12 kN)
+  cones: { x: -656, z0: 170, z1: 250 },
+  trees: [[-605, 225], [-596, 248]] as [number, number][],      // two roadside-size trees
+  drop: { x: -600, z: 200 },
+  fishhook: { x: -560, z: 5 },                                  // run-up lane for the fishhook test (heading +Z)
+};
 
 const features: Feature[] = [];
-export const humps: { id: string; name: string; z: number; len: number; h: number; R?: number; source: string }[] = [];
+/** Humps for the hump test. `x` (lane centre) is set for humps on the new road; the strip's humps use the strip's left lane. */
+export const humps: { id: string; name: string; z: number; len: number; h: number; R?: number; source: string; x?: number }[] = [];
 
 function addHump(id: string, name: string, z: number, kind: 'circ' | 'trap', a: number, b: number, c = 0, source = '') {
   const prof = kind === 'circ' ? circHump(z, a, b) : trapHump(z, a, b, c);
@@ -122,6 +132,7 @@ for (const [id, name, kind, a, b, c, src] of HUMPSPEC) { addHump(id, name, zz, k
 features.push({ name: 'Rumble strips', x0: IROAD.x0, x1: IROAD.x1, z0: zz, z1: zz + 6, lod: 0.025, paint: 'hump', surface: 'rumble', info: 'Rumble strips (IRC:99-2018)',
   h: (x, z) => { const d = z - zz; const k = Math.floor(d); const f = d - k; return k >= 0 && k < 6 && f < 0.25 ? 0.025 * smooth(0, 0.04, f) * (1 - smooth(0.21, 0.25, f)) : 0; } });
 humps.push({ id: 'RS', name: 'Rumble strips (6 × 25 mm)', z: zz, len: 6, h: 0.025, source: 'C-001' });
+humps.push(...ROAD_HUMPS); // contextual humps on the new road (roads.ts)
 
 // --- Off-road park ---
 const OR = OFFROAD;
@@ -152,6 +163,22 @@ features.push({ name: 'Runway', ...RUNWAY, surface: 'asphalt', lod: 2 });
 features.push({ name: 'Connector', x0: 7, x1: 34, z0: -20, z1: -8, surface: 'asphalt', lod: 1 });
 features.push({ name: 'Connector2', x0: 42, x1: 110, z0: -20, z1: -8, surface: 'asphalt', lod: 1 });
 
+// --- Crash pad ---
+{
+  const C = CRASH, K = CRASHPAD;
+  features.push({ name: 'Crash pad', ...C, surface: 'asphalt', lod: 2, info: 'Crash pad: kerb · sand pit · ramp · ditch · pole · wall (T: crash tests)' });
+  const k = K.kerb;
+  features.push({ name: 'Kerb 150 mm', x0: k.x, x1: k.x + k.w + 0.04, z0: k.z0, z1: k.z1, surface: 'concrete', lod: 0.02, info: 'Kerb 150 mm (slide into it sideways)',
+    h: (x, z) => { const e = Math.min(1, (x - k.x) / 0.04, (k.x + k.w + 0.04 - x) / 0.04); if (e <= 0) return 0; return k.h * e * smooth(k.z0, k.z0 + 0.5, z) * (1 - smooth(k.z1 - 0.5, k.z1, z)); } });
+  features.push({ name: 'Sand pit', ...K.sand, surface: 'sand', lod: 0.5, info: 'Sand pit (soft-ground trip)' });
+  const r = K.ramp;
+  features.push({ name: 'One-side ramp 0.6 m', x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z0 + r.len + 0.04, surface: 'concrete', lod: 0.04, info: 'One-side ramp 0.6 m (left wheels, 60–80 km/h rolls)',
+    h: (x, z) => { const ex = Math.min(1, Math.max(0, Math.min(x - r.x0, r.x1 - x) / 0.04)); if (ex <= 0) return 0; const d = z - r.z0; return ex * (d <= r.len ? r.h * d / r.len : r.h * Math.max(0, 1 - (d - r.len) / 0.04)); } });
+  const dt = K.ditch, s1 = dt.d / Math.tan(Math.PI / 6), s2 = dt.d;
+  features.push({ name: 'Ditch 0.6 m', x0: dt.x, x1: dt.x + s1 + 1 + s2, z0: dt.z0, z1: dt.z1, surface: 'grass', lod: 0.1, info: 'Ditch 0.6 m (slide in sideways)',
+    h: (x, z) => { const u = x - dt.x; const p = u <= s1 ? -u * Math.tan(Math.PI / 6) : u <= s1 + 1 ? -dt.d : -dt.d + (u - s1 - 1); return Math.min(0, p) * smooth(dt.z0, dt.z0 + 4, z) * (1 - smooth(dt.z1 - 4, dt.z1, z)); } });
+}
+
 // ---------- queries ----------
 const flatFeatures = features.filter(f => !f.h);
 const heightFeatures = features.filter(f => f.h);
@@ -161,23 +188,28 @@ const key = (i: number, j: number) => i * 100003 + j;
 for (const f of features) for (let i = Math.floor(f.x0 / CELL); i <= Math.floor(f.x1 / CELL); i++) for (let j = Math.floor(f.z0 / CELL); j <= Math.floor(f.z1 / CELL); j++) { const k = key(i, j); if (!grid.has(k)) grid.set(k, []); grid.get(k)!.push(f); }
 const near = (x: number, z: number) => grid.get(key(Math.floor(x / CELL), Math.floor(z / CELL))) || [];
 
+const PAVED: Box[] = [RUNWAY, IROAD, { x0: 7, x1: 110, z0: -20, z1: -8 }, CRASH];
 /** Base terrain (gentle rolling field), zero on and near the paved areas. */
 function baseHeight(x: number, z: number) {
   const inPaved = (b: Box, m: number) => x > b.x0 - m && x < b.x1 + m && z > b.z0 - m && z < b.z1 + m;
   let w = 1;
-  for (const b of [RUNWAY, IROAD, { x0: 7, x1: 110, z0: -20, z1: -8 }]) if (inPaved(b, 25)) { const dx = Math.max(b.x0 - x, x - b.x1, 0), dz = Math.max(b.z0 - z, z - b.z1, 0); w = Math.min(w, smooth(4, 25, Math.hypot(dx, dz))); }
-  const dp = Math.hypot(x - PAD.cx, z - PAD.cz); w = Math.min(w, smooth(PAD.r + 4, PAD.r + 30, dp));
-  if (x > OFFROAD.x0 - 20 && x < OFFROAD.x1 + 20 && z > OFFROAD.z0 - 20 && z < OFFROAD.z1 + 20) { const dx = Math.max(OFFROAD.x0 - x, x - OFFROAD.x1, 0), dz = Math.max(OFFROAD.z0 - z, z - OFFROAD.z1, 0); w = Math.min(w, smooth(0, 20, Math.hypot(dx, dz))); }
+  for (const b of PAVED) if (inPaved(b, 25)) { const dx = Math.max(b.x0 - x, x - b.x1, 0), dz = Math.max(b.z0 - z, z - b.z1, 0); w = Math.min(w, smooth(4, 25, Math.hypot(dx, dz))); if (w === 0) return 0; } // early-out: on pavement the noise below is weighted by 0
+  const dp = Math.hypot(x - PAD.cx, z - PAD.cz); w = Math.min(w, smooth(PAD.r + 4, PAD.r + 30, dp)); if (w === 0) return 0;
+  if (x > OFFROAD.x0 - 20 && x < OFFROAD.x1 + 20 && z > OFFROAD.z0 - 20 && z < OFFROAD.z1 + 20) { const dx = Math.max(OFFROAD.x0 - x, x - OFFROAD.x1, 0), dz = Math.max(OFFROAD.z0 - z, z - OFFROAD.z1, 0); w = Math.min(w, smooth(0, 20, Math.hypot(dx, dz))); if (w === 0) return 0; }
   return w * (2.2 * fbm(x * 0.004 + 3, z * 0.004, 4) + 0.25 * fbm(x * 0.05, z * 0.05, 2));
 }
 
 export function heightAt(x: number, z: number): number {
+  const rw = roadSample(x, z);           // new roads (roads.ts): their own surface, blended into the terrain at the sides
+  if (rw >= 1) return RQ.h;              // on the road: no base-terrain noise at all
   let h = baseHeight(x, z);
+  if (rw > 0) h += (RQ.h - h) * rw;
   for (const f of near(x, z)) if (f.h && x >= f.x0 && x <= f.x1 && z >= f.z0 && z <= f.z1) h += f.h(x, z);
   return h;
 }
 
 export function surfaceAt(x: number, z: number): SurfaceKey {
+  const rs = roadSurfaceAt(x, z); if (rs) return rs;
   let s: SurfaceKey = 'grass'; let area = Infinity;
   const dp = Math.hypot(x - PAD.cx, z - PAD.cz); if (dp < PAD.r) { s = 'asphalt'; area = Math.PI * PAD.r * PAD.r; }
   for (const f of near(x, z)) {
@@ -194,6 +226,7 @@ export function normalAt(x: number, z: number, out: { x: number; y: number; z: n
 }
 
 export function zoneLabelAt(x: number, z: number): string {
+  const rl = roadLabelAt(x, z); if (rl) return rl;
   for (const f of near(x, z)) if (f.info && x >= f.x0 && x <= f.x1 && z >= f.z0 && z <= f.z1 && f.paint === 'hump') return f.info;
   for (const f of near(x, z)) if (f.info && x >= f.x0 && x <= f.x1 && z >= f.z0 && z <= f.z1) return f.info;
   if (x >= RUNWAY.x0 && x <= RUNWAY.x1) return 'Runway (0–100 / braking)';

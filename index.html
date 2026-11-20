@@ -26,8 +26,10 @@
   #gmeter { position: fixed; bottom: 16px; right: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 50% }
   #chart { position: fixed; top: 12px; right: 12px; border: 1px solid var(--line); border-radius: 10px }
   #toast { position: fixed; top: 54px; left: 50%; transform: translateX(-50%); background: rgba(249,115,22,.95); color: #111; font-weight: 600; padding: 6px 14px; border-radius: 8px; opacity: 0; transition: opacity .3s; pointer-events: none }
+  #crash-status { position: fixed; top: 118px; left: 50%; transform: translateX(-50%); display: none; background: rgba(185,28,28,.9); color: #fff; font-weight: 800; padding: 5px 14px; border-radius: 8px; letter-spacing: .02em; pointer-events: none }
+  .clrow { cursor: pointer } .clrow:hover td { background: rgba(255,255,255,.05) }
   #test-status { position: fixed; top: 92px; left: 50%; transform: translateX(-50%); color: #facc15; font-weight: 600; text-shadow: 0 1px 2px #000 }
-  #help, #testsPanel, #result, #inspector { display: none; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 32px)); max-height: 86vh; overflow: auto; z-index: 5 }
+  #help, #testsPanel, #result, #inspector, #crashlog { display: none; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 32px)); max-height: 86vh; overflow: auto; z-index: 5 }
   #help h3, .rt { margin: 0 0 8px; font-size: 15px; font-weight: 700; display: flex; justify-content: space-between }
   .rt button, #help button { background: none; border: 0; color: var(--muted); font-size: 16px; cursor: pointer }
   kbd { background: #1f2937; border: 1px solid #374151; border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font: 600 11px ui-monospace, monospace; color: #e5e7eb }
@@ -72,6 +74,7 @@
 <canvas id="gmeter" width="110" height="110"></canvas>
 <div id="toast"></div>
 <div id="test-status"></div>
+<div id="crash-status"></div>
 
 <div id="help" class="panel">
   <h3>Controls <button onclick="this.closest('#help').style.display='none'">✕</button></h3>
@@ -81,7 +84,8 @@
     <tr><td><kbd>1</kbd> 2H · <kbd>2</kbd> 4H · <kbd>3</kbd> 4L (stopped, in N) · <kbd>L</kbd> rear diff lock (4L) · <kbd>K</kbd> DAC (4L) · <kbd>V</kbd> VSC on/off</td></tr>
     <tr><td><kbd>,</kbd> / <kbd>.</kbd> left / right indicator (cancels itself after the turn) · <kbd>/</kbd> hazard lights · <kbd>N</kbd> horn (hold)</td></tr>
     <tr><td><kbd>C</kbd> camera (chase, cockpit, bonnet, wheel, orbit, trackside) · drag in cockpit to look around</td></tr>
-    <tr><td><kbd>5</kbd> runway · <kbd>6</kbd> Indian road · <kbd>7</kbd> speed breakers · <kbd>8</kbd> off-road · <kbd>9</kbd> handling pad · <kbd>Backspace</kbd> recover</td></tr>
+    <tr><td><kbd>4</kbd> new Indian road (state highway → district road → village) · <kbd>5</kbd> runway · <kbd>6</kbd> Indian road strip · <kbd>7</kbd> speed breakers · <kbd>8</kbd> off-road · <kbd>9</kbd> handling pad · <kbd>0</kbd> crash pad (kerb, sand, ramp, ditch, pole, wall, signs, cones)</td></tr>
+    <tr><td><kbd>Backspace</kbd> recover onto the wheels (keeps the damage) · <kbd>Shift</kbd>+<kbd>Backspace</kbd> recover and repair · <kbd>Y</kbd> repair (body, glass, wheels, engine) · <kbd>P</kbd> crash log (last 20, Save JSON)</td></tr>
     <tr><td><kbd>T</kbd> tests · <kbd>F</kbd> telemetry (chart + wheel loads) · <kbd>U</kbd> HUD size (compact / full / off) · <kbd>I</kbd> rig inspector · <kbd>M</kbd> mute · <kbd>B</kbd> sound mode (synth / samples / hybrid) · <kbd>Q</kbd> graphics (Auto / Low / Medium / High)</td></tr>
     <tr><td>Gamepad: RT throttle · LT brake · left stick steer · B handbrake · Y camera · X engine · LB/RB manual shift · Start = selector · D-pad ◀ ▶ indicators · L3 horn</td></tr>
   </table>
@@ -97,7 +101,33 @@
   <label>Speed breaker<select id="humpSel"></select></label>
   <label>Crossing speed <b id="humpSpeedV">30 km/h</b><input type="range" id="humpSpeed" min="5" max="70" value="30"></label>
   <button class="btn" onclick="runTest('hump')">Run speed-breaker test</button>
+  <hr style="border-color:#1f2937">
+  <p class="note">New Indian road (key <kbd>4</kbd>): the village humps <b>VH-1…4</b> and rumble set <b>RS-V</b> are in the speed-breaker list above.</p>
+  <label>Pothole speed (district road, left wheel path, 0.7 m × 60 mm)
+    <select onchange="sim.tests.potholeSpeed = +this.value"><option>20</option><option selected>40</option><option>60</option></select></label>
+  <button class="btn" onclick="runTest('pothole')">Run pothole test</button>
+  <label>Ride section and speed
+    <select onchange="sim.tests.rideClass = this.value"><option value="sh">State highway (IRI 3.5)</option><option value="district" selected>District road (IRI 4.5)</option><option value="village">Village entry (IRI 5.0)</option></select>
+    <select onchange="sim.tests.rideSpeed = +this.value"><option>40</option><option selected>60</option><option>80</option></select></label>
+  <button class="btn" onclick="runTest('ride')">Run ride test</button>
+  <hr style="border-color:#1f2937">
+  <p class="note"><b>Crash tests</b> (all on the crash pad, key <kbd>0</kbd>). Each ends with the crash report; <kbd>P</kbd> keeps the last 20. <kbd>Y</kbd> repairs the car.</p>
+  <label>Fishhook entry speed (NHTSA 1b, throttle off; VSC as set with <kbd>V</kbd>)
+    <select onchange="sim.tests.fishSpeed = +this.value"><option>56</option><option selected>64</option><option>72</option><option>80</option></select></label>
+  <button class="btn" onclick="runTest('fishhook')">Fishhook</button>
+  <label>Kerb trip: sideways into a 150 mm kerb at
+    <select onchange="sim.tests.kerbSpeed = +this.value"><option>10</option><option>25</option><option selected>40</option><option>50</option></select></label>
+  <button class="btn" onclick="runTest('kerb')">Kerb trip</button>
+  <label>Frontal impact target and speed
+    <select onchange="sim.tests.poleTarget = this.value"><option value="pole" selected>Pole Ø 254 mm (rigid)</option><option value="wall">Rigid wall (full width)</option><option value="sign">Sign post (frangible, 12 kN)</option></select>
+    <select onchange="sim.tests.poleSpeed = +this.value"><option>32</option><option>40</option><option selected>50</option><option>56</option><option>64</option></select></label>
+  <button class="btn" onclick="runTest('pole')">Pole / wall</button>
+  <label>Drop
+    <select onchange="sim.tests.dropKind = this.value"><option value="corner" selected>Corner first, 3 rad/s roll</option><option value="wheels">Wheels down</option><option value="roof">Roof down</option></select>
+    <select onchange="sim.tests.dropHeight = +this.value"><option>0.5</option><option selected>1</option><option>2</option></select></label>
+  <button class="btn" onclick="runTest('drop')">Drop</button>
 </div>
+<div id="crashlog" class="panel"></div>
 <div id="result" class="panel"></div>
 <div id="inspector" class="panel"></div>
 <script type="module" src="/src/main.ts"></script>

@@ -9,6 +9,13 @@ export interface ImpactEvent {
   bumpStop: boolean;         // true when the bump stop was reached
 }
 
+/** The car body striking the ground or an object (crash). */
+export interface BodyImpactEvent {
+  energy: number;            // J, ½·m·v² of the approach speed at the contact
+  zone: string;              // hull zone hit: front | roofRail | roofPanel | door | sill | mirror | tyre
+  material: string;          // what was hit: ground | wood | steel | concrete | masonry | plastic | rubber | vehicle | animal
+}
+
 export interface AudioState {
   ignition: boolean;         // engine running
   rpm: number;               // crankshaft rpm (idle ≈ 750, redline ≈ 4400 for the 1GD-FTV)
@@ -26,7 +33,8 @@ export interface AudioState {
   brake: number;             // 0..1
   absActive: boolean;
   impacts: ImpactEvent[];    // suspension impacts since the last frame
-  bellyScrape: number;       // 0..1 underbody contact intensity this frame
+  bellyScrape: number;       // 0..1 underbody (and body-on-ground) contact intensity this frame
+  bodyImpacts?: BodyImpactEvent[]; // body crashes since the last frame (crunch through the impact voices)
   camera: 'exterior' | 'interior';
   driveMode: '2H' | '4H' | '4L';
 }

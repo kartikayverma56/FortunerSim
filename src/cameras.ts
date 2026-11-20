@@ -130,7 +130,7 @@ export class CameraRig {
         this.cam.position.copy(off); this.cam.up.set(0, 1, 0); this.cam.lookAt(tgt); break;
       }
       case 'orbit': {
-        if (!this.init) { this.cam.position.set(p.x + 5, p.y + 1.8, p.z + 5); this.init = true; }
+        if (!this.init) { this.orbit.target.copy(p); this.cam.position.set(p.x + 5, p.y + 1.8, p.z + 5); this.init = true; } // target first: away from the origin the camera was offset twice
         const d = this.v.copy(p).sub(this.orbit.target); this.orbit.target.add(d); this.cam.position.add(d); this.orbit.update(); break;
       }
       case 'trackside': {

@@ -28,9 +28,14 @@ Press `H` in the app for the full list.
 | `1` `2` `3` | Transfer case: 2H / 4H / 4L. 4L needs the car stopped and in N. |
 | `L` / `K` / `V` | Rear diff lock (4L) / DAC (4L) / VSC on-off |
 | `C` | Cameras: chase, cockpit (drag to look), bonnet, wheel/suspension, orbit, trackside |
-| `5` – `9` | Teleport: runway, Indian road, speed breakers, off-road, handling pad |
-| `Backspace` | Recover / upright the car |
-| `T` | Standard tests: 0–100, 80–0 braking, speed breaker at chosen speed |
+| `4` | Teleport: the new Indian road (state highway → district road → village), left lane |
+| `5` – `9` | Teleport: runway, Indian road strip, speed breakers, off-road, handling pad |
+| `0` | Teleport: crash pad (150 mm kerb, sand pit, one-side ramp, ditch, Ø 254 mm pole, rigid wall, frangible signs, cones) |
+| `Backspace` | Recover onto the wheels (keeps the damage, like being towed back upright) |
+| `Shift`+`Backspace` | Recover and repair |
+| `Y` | Repair: body shape, glass, lamps, mirrors, wheels, engine |
+| `P` | Crash log: the last 20 crash reports (click one to reopen it), Save JSON, Clear |
+| `T` | Standard tests: 0–100, 80–0 braking, speed breaker at chosen speed, pothole, ride per road class; crash tests: fishhook, kerb trip, pole / wall / sign, drop |
 | `,` / `.` | Left / right indicator (cancels itself once the wheel comes back after the turn) |
 | `/` | Hazard lights |
 | `N` (hold) | Horn |
@@ -42,6 +47,56 @@ Press `H` in the app for the full list.
 | `Q` | Graphics: Auto → Low → Medium → High (saved; the car model and anti-aliasing change on reload) |
 
 Gamepad: RT/LT pedals, left stick steering, Y camera, X engine, LB/RB shift, B handbrake, D-pad left/right indicators, L3 horn.
+
+## Crashes, damage and crash statistics (Stage 2, 2026-11-20)
+
+Phases P3–P5 of `research/PLAN_crash_damage_mirrors.md`. Press `0` for the crash pad, or `T` for the crash tests.
+
+- **World collisions** (`src/physics/collide.ts`, registry `src/world/colliders.ts`).
+  - Broadphase: every 16 physics steps the colliders within 4 m + 0.05 s of travel go into a near list. With nothing near, a step costs one counter increment.
+  - The car is two body-frame boxes (lower body, cabin). Cylinders (trees, posts, poles) are tested as five spheres along their axis, so a thin pole cannot slip between hull points. Boxes (buildings, walls, sign boards) are tested against every hull point plus their four vertical edges.
+  - Contacts use the hull's elastic-plastic law and share its crush state, so a pole dent and a roof crush add up in one damage state. A contact keeps the face it entered through, so a deep crush never flips sideways. Past a zone's crush depth the structure keeps yielding at 10× the hardening (engine block, firewall) instead of becoming an elastic stop that hands the energy back.
+  - A concentrated load (pole, box edge) on the front yields at 2× the per-point values: the bumper beam spreads it over the structure. A rigid wall loads about six front points at once.
+  - Frangible objects (sign posts, 12 kN; charpais, 5 kN) fail at their break force and take their break energy out of the car's motion. Cones are 4 kg props: they fly, bounce, slide and topple onto their flank.
+  - Registered (2,011 colliders): 1,400 tree trunks (hidden trees on Low do not collide), 114 lamp posts, 70 sign boards (post + board each, they fall flat when struck), 75 cones, the village's 278 objects (buildings, boundary walls, LT/11 kV poles, trees, milestones, signboard posts, charpais) and the crash-pad pole, wall and two trees.
+- **Calibration** (`tools/crashtest.ts objects`): Ø 254 mm pole at 50 km/h → 85 cm crush, 11.5 g mean (target 0.7–1.0 m); rigid wall at 56 km/h → 65 cm, 19.2 g mean (target 0.5–0.7 m at 18–25 g); restitution 0.14–0.2. Front point values in `params.ts` (`hullZones.front`, `hullConcentrated`) are assumptions tuned only to these two targets.
+- **Damage** (`src/physics/damage.ts`, `src/vehicle/damageVisual.ts`).
+  - Zones front / rear / left / right / roof / underbody, 0–100 %, from the hull crush (0.6 × worst point + 0.4 × mean, as a fraction of the zone's crush depth).
+  - Mechanical faults: bent wheel (toe up to 2°, steering pull, damper × 0.3), puncture (tyre 290 → 70 kN/m, μ × 0.6, rolling resistance × 4), collapsed suspension (spring × 0.4, dragging), coolant leak (temperature climbs with load, derate from 112 °C, stall at 125 °C), holed intercooler (no boost), dead engine, airbags + fuel cut on ΔV > 6 m/s frontal or > 4 m/s lateral within 150 ms or on a rollover (`Enter` restarts unless dead), stall after 3 s upside down. `tools/damagetest.ts` triggers and measures each one.
+  - Visual: the merged car meshes are dented on the CPU around each crushed point (in slices of at most ~3 ms per frame, normals recomputed for the moved vertices only); side and rear glass shatters (hidden), the windscreen cracks and frosts; crushed corners leave their lamps dark; a broken door mirror disappears from the live mirrors.
+- **Crash recorder** (`src/physics/crashRecorder.ts`). An event opens on a body hit, more than 3 g (10 ms average) or a tilt beyond 60°, and closes 1 s after rest. The report (shown in the result panel with a speed / roll / g chart, and kept in the `P` log in `localStorage` `fsim.crashlog`) gives speed and slip angle at first contact, impact zone and clock direction, ΔV long/lat (150 ms), peak g at the CG and the driver's seat, quarter turns / rolls / end-over-ends, peak roll rate, airborne time, peak CG height, distance and time to rest, mean deceleration against the 0.36–0.61 g rollover band, the energy split (crush by zone, body friction, broken objects, remaining), damage per zone, faults, objects struck and cones hit. No injury figures: the model has no occupants. Cone strikes and small jolts are logged without a pop-up.
+- While a crash is in progress the HUD shows the unbounded roll angle (±180°) and the quarter-turn count; the `#info` panel shows one damage line.
+- **Sound and camera:** body hits play a crunch (structural thud + sheet-metal ring, coloured by what was hit) through the impact voices, and shake the camera.
+- **Tests** (`T`): Fishhook (NHTSA 1b, 56–80 km/h), Kerb trip (10–50 km/h sideways into the 150 mm kerb), Pole / wall / sign (32–64 km/h), Drop (corner with spin, wheels down, roof down; 0.5–2 m).
+- **Known gaps:** tree crowns have no collider; charpai and village walls stay drawn after a charpai breaks (their meshes are merged); the 150 mm kerb launches the car higher than a real trip (peak CG 2.9 m at 40 km/h; Stage 1b kerb law); there is no traffic yet (moving colliders are supported).
+
+## Indian road (phase 1)
+
+Phase 1 of `research/PLAN_indian_roads.md`. Press `4` to start on it.
+
+- **Route.** A 7 m link road runs along z = −14 from the old connector (x = 110) to x = 420. There it meets a 1.5 km straight road going north (+Z) at x = 420:
+  - **0–500 m: state highway.** 7 m, IRI 3.5, crown 2.5 %, 1.5 m earth shoulders with a 30–50 mm edge drop, side drains, avenue trees with painted trunks, milestones, faded centre and edge lines.
+  - **500–1000 m: district road.** 5.5 m, IRI 4.5, ravelled surface, pothole clusters in the wheel paths, at the edge and on the crown (depth classes < 25 / 25–50 / > 50 mm). The tarmac edge is scalloped and broken, with a 30–100 mm drop over a 0.2 m ramp onto 1 m earth shoulders. Crossfall 3 %. There is a tea stall, a dhaba, a farm house, a tyre-puncture and auto-parts shop, and an 11 kV line on concrete poles.
+  - **1000–1500 m: village entry.** 7 m, IRI 5.0. A rumble set, then an unpainted hump pair (h 85 / 100 mm, chords 1.9 / 2.4 m), patches, raised and sunk manholes, trench cuts, and another hump pair at the exit. Shop-houses line the street: 1–3 storeys, flat roofs with parapets, painted fronts with bare cement sides, rolling shutters, signboards, chhajjas, black water tanks, stair cabins and rebar left for the next floor. Further on are houses with boundary walls, a shrine under a peepal tree, LT poles with sagging wires and service drops, and a transformer.
+- **Physics.** The car still samples `heightAt` / `surfaceAt`. `src/world/roads.ts` maps (x, z) to road coordinates (s along, d across) and returns the road's own surface: vertical profile + crown + roughness + features, blended into the terrain over 6–14 m. On the road, `heightAt` skips the base-terrain noise entirely.
+  - Roughness is synthesised from the ISO 8608 spectrum: wavelengths 0.3–50 m, 0.05 m tables, plus a left/right difference channel. Each section is scaled so that the quarter-car IRI of its wheel paths equals the class target. The lookup uses linear interpolation, with no trig in the physics loop.
+  - Discrete features (`src/world/roadFeatures.ts`) sit in a 4 m cell index along s.
+  - Earth shoulders, drains and frontage use the `grass` surface (μ 0.55).
+- **Meshing.** `src/world/roadMesh.ts` builds ~40 m pieces.
+  - Near meshes use 0.5 m base lines, 0.07 m lines across the tarmac edge band, and feature-local fine lines (potholes 0.03 m, humps 0.04 m, rumble bars and manholes 0.02 m).
+  - Near meshes are built lazily within ~80 m of the camera, in slices of about 4 ms per frame, and dropped beyond 140 m.
+  - One merged far ribbon per road leaves out the pieces that are drawn near.
+  - Every vertex is a `heightAt` sample. `tools/meshcheck.ts` measures the carriageway error between vertices.
+- **Roadside** (`src/world/roadside.ts` layout → `roadsideMesh.ts` visuals, `roadsideColliders.ts` collider data).
+  - All buildings and street furniture are merged into 4 meshes with one atlas material (canvas-drawn, generic Hindi/English shop names, no brands). The overhead wires are one line mesh.
+  - `ROADSIDE_COLLIDERS` exports every building, wall, pole, tree, milestone, board post and cot as `{ kind: 'box' | 'cylinder', … }`, in the same yaw convention as `src/world/colliders.ts`. Nothing consumes it yet.
+- **Tests.**
+  - `tools/roadtest.ts`: IRI per section, ±10 %.
+  - `tools/ridetest.ts`: village humps, the reference pothole at 20/40/60 km/h, and ride RMS at 40/60/80 km/h per class.
+  - `tools/meshcheck.ts`: mesh against physics.
+  - `tools/bench.ts`: µs per step at each teleport spot.
+  - In the app (`T`): **pothole** and **ride** tests. The village humps (VH-1…4, RS-V) are in the speed-breaker list and run on the new road's left lane.
+- **Assumptions [A]**, all in one place: edge drop, pothole sizes and density, manholes, trench cuts, drains and frontage. See the `CLASSES` table in `roads.ts` and the generators in `roadFeatures.ts`.
 
 ## Graphics quality and speed (`src/quality.ts`)
 
@@ -168,9 +223,12 @@ To re-run the checks, rebuild with `./node_modules/.bin/esbuild tools/simtest.ts
 ## Layout
 
 ```
-src/physics/   params.ts (tagged parameters), vehicle.ts (dynamics)
+src/physics/   params.ts (tagged parameters), vehicle.ts (dynamics), hull.ts (body contact law), collide.ts (world objects),
+               damage.ts (damage state, faults), crashRecorder.ts (crash statistics), energy.ts (energy audit)
 src/world/     terrain.ts (analytic ground + IRC humps), worldMesh.ts (meshes, sky, scenery), carLighting.ts (reflection env, sun-shadow box)
-src/vehicle/   rig.ts (GLB loader, rig mapping, materials, lamps, stand-in), plate.ts (HSRP plate), contactShadow.ts, signals.ts (indicators, horn)
+               roads.ts / roadFeatures.ts / roughness.ts (new Indian road), roadMesh.ts (its LOD meshes), roadside*.ts (village, colliders), noise.ts
+src/vehicle/   rig.ts (GLB loader, rig mapping, materials, lamps, stand-in), plate.ts (HSRP plate), contactShadow.ts, signals.ts (indicators, horn),
+               damageVisual.ts (dents, glass, lamps, mirrors), skidMarks.ts, tyreSmoke.ts
 src/audio/     VehicleAudio.ts, engine-worklet.js, SampleLayer.ts, tuning.ts
 src/ui/        hud.ts, tests.ts
 research/      fortuner_params.json, SOUNDS.md, SOURCES.md

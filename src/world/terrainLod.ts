@@ -43,10 +43,10 @@ export class TerrainLOD extends THREE.LOD {
 
 interface Field { xs: number[]; zs: number[]; nx: number; nz: number; P: Float32Array; N: Float32Array; C: Uint8Array; names: string[] }
 
-function makeField(xs: number[], zs: number[], keep?: (cx: number, cz: number) => boolean, surfOf?: (cx: number, cz: number) => string): Field {
+function makeField(xs: number[], zs: number[], keep?: (cx: number, cz: number) => boolean, surfOf?: (cx: number, cz: number) => string, hFn: (x: number, z: number) => number = heightAt): Field {
   const nx = xs.length, nz = zs.length;
   const P = new Float32Array(nx * nz * 3);
-  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const k = (j * nx + i) * 3; P[k] = xs[i]; P[k + 1] = heightAt(xs[i], zs[j]); P[k + 2] = zs[j]; }
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const k = (j * nx + i) * 3; P[k] = xs[i]; P[k + 1] = hFn(xs[i], zs[j]); P[k + 2] = zs[j]; }
   const names: string[] = [], ids = new Map<string, number>();
   const C = new Uint8Array((nx - 1) * (nz - 1));
   for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
@@ -126,14 +126,14 @@ function farError(F: Field, FX: number[], FZ: number[]) {
 }
 
 /** Geometry for the sub-grid LX × LZ (indices into the field), with per-surface groups and edge skirts. */
-function pieceGeometry(F: Field, LX: number[], LZ: number[], farNormals: number, skirt: number) {
+function pieceGeometry(F: Field, LX: number[], LZ: number[], farNormals: number, skirt: number, hFn: (x: number, z: number) => number = heightAt) {
   const { P, N, C, nx } = F, cw = nx - 1, mx = LX.length, mz = LZ.length;
   const pos: number[] = [], nor: number[] = [], uv: number[] = [];
   for (let b = 0; b < mz; b++) for (let a = 0; a < mx; a++) {
     const k = (LZ[b] * nx + LX[a]) * 3, x = P[k], y = P[k + 1], z = P[k + 2];
     pos.push(x, y, z); uv.push(x / 6, z / 6);
     if (farNormals > 0) { // smoothed slope at the far mesh's own scale; the same at a shared edge of two pieces
-      const e = farNormals, hx = (heightAt(x + e, z) - heightAt(x - e, z)) / (2 * e), hz = (heightAt(x, z + e) - heightAt(x, z - e)) / (2 * e), l = Math.hypot(hx, 1, hz);
+      const e = farNormals, hx = (hFn(x + e, z) - hFn(x - e, z)) / (2 * e), hz = (hFn(x, z + e) - hFn(x, z - e)) / (2 * e), l = Math.hypot(hx, 1, hz);
       nor.push(-hx / l, 1 / l, -hz / l);
     } else nor.push(N[k], N[k + 1], N[k + 2]);
   }
@@ -177,11 +177,13 @@ export interface LodStats { pieces: number; nearTris: number; farTris: number; m
 
 /**
  * Build a tensor grid on sample lines xs × zs (same as the old buildGrid), cut into LOD pieces.
- * `mats` maps a piece's surface order to its materials.
+ * `mats` maps a piece's surface order to its materials. `hFn` (default heightAt) lets the coarse base terrain
+ * sink under the new roads' own meshes.
  */
 export function buildLodTerrain(xs: number[], zs: number[], spec: LodSpec, mats: (order: string[]) => THREE.Material[],
-  keep?: (cx: number, cz: number) => boolean, surfOf?: (cx: number, cz: number) => string): { objects: TerrainLOD[]; stats: LodStats } {
-  const F = makeField(xs, zs, keep, surfOf);
+  keep?: (cx: number, cz: number) => boolean, surfOf?: (cx: number, cz: number) => string,
+  hFn: (x: number, z: number) => number = heightAt): { objects: TerrainLOD[]; stats: LodStats } {
+  const F = makeField(xs, zs, keep, surfOf, hFn);
   const sx = splits(xs, spec.piece), sz = splits(zs, spec.piece);
   const plans: { NX: number[]; NZ: number[]; FX: number[]; FZ: number[]; err: number }[] = [];
   for (let q = 0; q < sz.length - 1; q++) for (let p = 0; p < sx.length - 1; p++) {
@@ -198,7 +200,7 @@ export function buildLodTerrain(xs: number[], zs: number[], spec: LodSpec, mats:
   const skirt = Math.max(0.05, 2 * maxErr + 0.03);
   const stats: LodStats = { pieces: plans.length, nearTris: 0, farTris: 0, maxErr };
   const objects = plans.map(pl => {
-    const n = pieceGeometry(F, pl.NX, pl.NZ, 0, skirt), f = pieceGeometry(F, pl.FX, pl.FZ, spec.normalStep, skirt);
+    const n = pieceGeometry(F, pl.NX, pl.NZ, 0, skirt, hFn), f = pieceGeometry(F, pl.FX, pl.FZ, spec.normalStep, skirt, hFn);
     stats.nearTris += n.tris; stats.farTris += f.tris;
     const nm = new THREE.Mesh(n.geo, mats(n.order)), fm = new THREE.Mesh(f.geo, mats(f.order));
     nm.receiveShadow = fm.receiveShadow = true;

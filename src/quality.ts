@@ -14,12 +14,13 @@ export interface Preset {
   shadowSize: number;          // sun shadow map, px
   treeShadows: boolean;        // trees and lamp posts cast shadows
   treeFrac: number;            // share of the 1400 trees drawn
+  mirrors: 0 | 1 | 2;          // live rear-view mirrors: 0 tinted glass, 1 low-res (384×192 atlas), 2 sharper and faster (512×256)
 }
 
 export const PRESETS: Record<Level, Preset> = {
-  high: { model: 'showroom', aa: true, softShadows: true, maxPixelRatio: 1.5, renderScale: 1, shadowSize: 2048, treeShadows: true, treeFrac: 1 },
-  medium: { model: 'phone', aa: true, softShadows: false, maxPixelRatio: 1, renderScale: 1, shadowSize: 1024, treeShadows: false, treeFrac: 1 },
-  low: { model: 'phone', aa: false, softShadows: false, maxPixelRatio: 1, renderScale: 0.8, shadowSize: 1024, treeShadows: false, treeFrac: 0.5 },
+  high: { model: 'showroom', aa: true, softShadows: true, maxPixelRatio: 1.5, renderScale: 1, shadowSize: 2048, treeShadows: true, treeFrac: 1, mirrors: 2 },
+  medium: { model: 'phone', aa: true, softShadows: false, maxPixelRatio: 1, renderScale: 1, shadowSize: 1024, treeShadows: false, treeFrac: 1, mirrors: 1 },
+  low: { model: 'phone', aa: false, softShadows: false, maxPixelRatio: 1, renderScale: 0.8, shadowSize: 1024, treeShadows: false, treeFrac: 0.5, mirrors: 0 },
 };
 
 export const pixelRatioFor = (p: Preset) => Math.min(devicePixelRatio, p.maxPixelRatio) * p.renderScale;
